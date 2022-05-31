@@ -56,7 +56,7 @@ public class GlowingEntities implements Listener {
 	 * Enables the Glowing API.
 	 * 
 	 * @param plugin plugin that will be used to register the events.
-	 * @see {@link #disable()}
+	 * @see #disable()
 	 */
 	public void enable(Plugin plugin) {
 		if (enabled) throw new IllegalStateException("The Glowing Entities API has already been enabled.");
@@ -71,7 +71,7 @@ public class GlowingEntities implements Listener {
 	 * Methods such as {@link #setGlowing(int, String, Player, ChatColor, byte)}
 	 * and {@link #unsetGlowing(int, Player)} will no longer be usable.
 	 * 
-	 * @see {@link #enable(Plugin)}
+	 * @see #enable(Plugin)
 	 */
 	public void disable() {
 		if (!enabled) return;
