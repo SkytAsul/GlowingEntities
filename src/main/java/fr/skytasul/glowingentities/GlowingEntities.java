@@ -39,14 +39,42 @@ import io.netty.channel.ChannelPromise;
  */
 public class GlowingEntities implements Listener {
 	
-	private Map<Player, PlayerData> glowing = new HashMap<>();
+	private Map<Player, PlayerData> glowing;
+	private boolean enabled = false;
 	
+	/**
+	 * Initializes the Glowing API.
+	 * 
+	 * @param plugin plugin that will be used to register the events.
+	 */
 	public GlowingEntities(Plugin plugin) {
 		if (!Packets.enabled) throw new IllegalStateException("The Glowing Entities API is disabled. An error has occured during initialization.");
-		plugin.getServer().getPluginManager().registerEvents(this, plugin);
+		enable(plugin);
 	}
 	
+	/**
+	 * Enables the Glowing API.
+	 * 
+	 * @param plugin plugin that will be used to register the events.
+	 * @see {@link #disable()}
+	 */
+	public void enable(Plugin plugin) {
+		if (enabled) throw new IllegalStateException("The Glowing Entities API has already been enabled.");
+		plugin.getServer().getPluginManager().registerEvents(this, plugin);
+		glowing = new HashMap<>();
+		enabled = true;
+	}
+	
+	/**
+	 * Disables the API.
+	 * <p>
+	 * Methods such as {@link #setGlowing(int, String, Player, ChatColor, byte)}
+	 * and {@link #unsetGlowing(int, Player)} will no longer be usable.
+	 * 
+	 * @see {@link #enable(Plugin)}
+	 */
 	public void disable() {
+		if (!enabled) return;
 		HandlerList.unregisterAll(this);
 		glowing.values().forEach(playerData -> {
 			try {
@@ -55,6 +83,12 @@ public class GlowingEntities implements Listener {
 				e.printStackTrace();
 			}
 		});
+		glowing = null;
+		enabled = false;
+	}
+	
+	private void ensureEnabled() {
+		if (!enabled) throw new IllegalStateException("The Glowing Entities API is not enabled.");
 	}
 	
 	@EventHandler
@@ -62,24 +96,68 @@ public class GlowingEntities implements Listener {
 		glowing.remove(event.getPlayer());
 	}
 	
+	/**
+	 * Make the {@link Entity} passed as a parameter glow with its default team color.
+	 * 
+	 * @param entity entity to make glow
+	 * @param receiver player which will see the entity glowing
+	 * @throws ReflectiveOperationException
+	 */
 	public void setGlowing(Entity entity, Player receiver) throws ReflectiveOperationException {
 		setGlowing(entity, receiver, null);
 	}
 	
+	/**
+	 * Make the {@link Entity} passed as a parameter glow with the specified color.
+	 * 
+	 * @param entity entity to make glow
+	 * @param receiver player which will see the entity glowing
+	 * @param color color of the glowing effect
+	 * @throws ReflectiveOperationException
+	 */
 	public void setGlowing(Entity entity, Player receiver, ChatColor color) throws ReflectiveOperationException {
 		String teamID = entity instanceof Player ? entity.getName() : entity.getUniqueId().toString();
 		setGlowing(entity.getEntityId(), teamID, receiver, color, Packets.getEntityFlags(entity));
 	}
 	
+	/**
+	 * Make the entity with specified entity ID glow with its default team color.
+	 * 
+	 * @param entityID entity id of the entity to make glow
+	 * @param teamID internal string used to add the entity to a team
+	 * @param receiver player which will see the entity glowing
+	 * @throws ReflectiveOperationException
+	 */
 	public void setGlowing(int entityID, String teamID, Player receiver) throws ReflectiveOperationException {
 		setGlowing(entityID, teamID, receiver, null, (byte) 0);
 	}
 	
+	/**
+	 * Make the entity with specified entity ID glow with the specified color.
+	 * 
+	 * @param entityID entity id of the entity to make glow
+	 * @param teamID internal string used to add the entity to a team
+	 * @param receiver player which will see the entity glowing
+	 * @param color color of the glowing effect
+	 * @throws ReflectiveOperationException
+	 */
 	public void setGlowing(int entityID, String teamID, Player receiver, ChatColor color) throws ReflectiveOperationException {
 		setGlowing(entityID, teamID, receiver, color, (byte) 0);
 	}
-
+	
+	/**
+	 * Make the entity with specified entity ID glow with the specified color, and keep some flags.
+	 * 
+	 * @param entityID entity id of the entity to make glow
+	 * @param teamID internal string used to add the entity to a team
+	 * @param receiver player which will see the entity glowing
+	 * @param color color of the glowing effect
+	 * @param otherFlags internal flags that must be kept (on fire, crouching...).
+	 * See <a href="https://wiki.vg/Entity_metadata#Entity">wiki.vg</a> for more informations.
+	 * @throws ReflectiveOperationException
+	 */
 	public void setGlowing(int entityID, String teamID, Player receiver, ChatColor color, byte otherFlags) throws ReflectiveOperationException {
+		ensureEnabled();
 		if (color != null && !color.isColor()) throw new IllegalArgumentException("ChatColor must be a color format");
 		
 		PlayerData playerData = glowing.get(receiver);
@@ -112,11 +190,30 @@ public class GlowingEntities implements Listener {
 		}
 	}
 	
+	/**
+	 * Make the {@link Entity} passed as a parameter loose its custom glowing effect.
+	 * <p>
+	 * This has <b>no effect</b> on glowing status given by another plugin or vanilla behavior.
+	 * 
+	 * @param entity entity to remove glowing effect from
+	 * @param receiver player which will no longer see the glowing effect
+	 * @throws ReflectiveOperationException
+	 */
 	public void unsetGlowing(Entity entity, Player receiver) throws ReflectiveOperationException {
 		unsetGlowing(entity.getEntityId(), receiver);
 	}
 	
+	/**
+	 * Make the entity with specified entity ID passed as a parameter loose its custom glowing effect.
+	 * <p>
+	 * This has <b>no effect</b> on glowing status given by another plugin or vanilla behavior.
+	 * 
+	 * @param entityID entity id of the entity to remove glowing effect from
+	 * @param receiver player which will no longer see the glowing effect
+	 * @throws ReflectiveOperationException
+	 */
 	public void unsetGlowing(int entityID, Player receiver) throws ReflectiveOperationException {
+		ensureEnabled();
 		PlayerData playerData = glowing.get(receiver);
 		if (playerData == null) return; // the player do not have any entity glowing
 		
@@ -231,11 +328,9 @@ public class GlowingEntities implements Listener {
 				// e.g. Bukkit.getServer().getClass().getPackage().getName() -> org.bukkit.craftbukkit.v1_17_R1
 				String[] versions = Bukkit.getServer().getClass().getPackage().getName().split("\\.")[3].substring(1).split("_");
 				version = Integer.parseInt(versions[1]); // 1.X
-				if (version >= 17) {
-					// e.g. Bukkit.getBukkitVersion() -> 1.17.1-R0.1-SNAPSHOT
-					versions = Bukkit.getBukkitVersion().split("-R")[0].split("\\.");
-					versionMinor = versions.length <= 2 ? 0 : Integer.parseInt(versions[2]);
-				}else versionMinor = Integer.parseInt(versions[2].substring(1)); // 1.X.Y
+				// e.g. Bukkit.getBukkitVersion() -> 1.17.1-R0.1-SNAPSHOT
+				versions = Bukkit.getBukkitVersion().split("-R")[0].split("\\.");
+				versionMinor = versions.length <= 2 ? 0 : Integer.parseInt(versions[2]);
 				logger.info("Found server version 1." + version + "." + versionMinor);
 				
 				mappings = ProtocolMappings.getMappings(version);
