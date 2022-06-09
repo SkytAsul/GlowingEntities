@@ -32,15 +32,17 @@ import io.netty.channel.ChannelPromise;
 /**
  * A Spigot util to easily make entities glow.
  * <p>
- * <b>1.17 -> 1.18.2</b>
+ * <b>1.17 -> 1.19</b>
  * 
- * @version 1.0.0
+ * @version 1.1.0
  * @author SkytAsul
  */
 public class GlowingEntities implements Listener {
 	
 	private Map<Player, PlayerData> glowing;
 	private boolean enabled = false;
+	
+	private int uuid;
 	
 	/**
 	 * Initializes the Glowing API.
@@ -62,6 +64,7 @@ public class GlowingEntities implements Listener {
 		if (enabled) throw new IllegalStateException("The Glowing Entities API has already been enabled.");
 		plugin.getServer().getPluginManager().registerEvents(this, plugin);
 		glowing = new HashMap<>();
+		uuid = ThreadLocalRandom.current().nextInt(Integer.MAX_VALUE);
 		enabled = true;
 	}
 	
@@ -84,6 +87,7 @@ public class GlowingEntities implements Listener {
 			}
 		});
 		glowing = null;
+		uuid = 0;
 		enabled = false;
 	}
 	
@@ -162,7 +166,7 @@ public class GlowingEntities implements Listener {
 		
 		PlayerData playerData = glowing.get(receiver);
 		if (playerData == null) {
-			playerData = new PlayerData(receiver);
+			playerData = new PlayerData(this, receiver);
 			Packets.addPacketsHandler(playerData);
 			glowing.put(receiver, playerData);
 		}
@@ -224,22 +228,28 @@ public class GlowingEntities implements Listener {
 		
 		if (glowingData.color != null) Packets.removeGlowingColor(glowingData);
 		
-		if (playerData.glowingDatas.isEmpty()) {
+		/* if (playerData.glowingDatas.isEmpty()) {
 			// if the player do not have any other entity glowing,
 			// we can safely remove all of its data to free some memory
 			Packets.removePacketsHandler(playerData);
 			glowing.remove(receiver);
-		}
+		} */
+		// actually no, we should not remove the player datas
+		// as it stores which teams did it receive.
+		// if we do not save this information, team would be created
+		// twice for the player, and BungeeCord does not like that
 	}
 	
 	private static class PlayerData {
 		
+		final GlowingEntities instance;
 		final Player player;
 		final Map<Integer, GlowingData> glowingDatas;
 		ChannelHandler packetsHandler;
 		EnumSet<ChatColor> sentColors;
 		
-		PlayerData(Player player) {
+		PlayerData(GlowingEntities instance, Player player) {
+			this.instance = instance;
 			this.player = player;
 			this.glowingDatas = new HashMap<>();
 		}
@@ -366,7 +376,7 @@ public class GlowingEntities implements Listener {
 				
 				playerConnection = getNMSClass("server.level", "EntityPlayer").getDeclaredField(mappings.getPlayerConnection());
 				sendPacket = getNMSClass("server.network", "PlayerConnection").getMethod(mappings.getSendPacket(), getNMSClass("network.protocol", "Packet"));
-				networkManager = getNMSClass("server.network", "PlayerConnection").getDeclaredField("a");
+				networkManager = getNMSClass("server.network", "PlayerConnection").getDeclaredField(mappings.getNetworkManager());
 				channelField = getNMSClass("network", "NetworkManager").getDeclaredField(mappings.getChannel());
 				
 				/* Metadata */
@@ -458,7 +468,7 @@ public class GlowingEntities implements Listener {
 			
 			TeamData teamData = teams.get(glowingData.color);
 			if (teamData == null) {
-				teamData = new TeamData(glowingData.color);
+				teamData = new TeamData(glowingData.player.instance.uuid, glowingData.color);
 				teams.put(glowingData.color, teamData);
 			}
 			
@@ -558,15 +568,13 @@ public class GlowingEntities implements Listener {
 		
 		private static class TeamData {
 			
-			private static final int uuid = ThreadLocalRandom.current().nextInt(Integer.MAX_VALUE);
-			
 			private final String id;
 			private final Object creationPacket;
 			
 			private final Cache<String, Object> addPackets = CacheBuilder.newBuilder().expireAfterAccess(3, TimeUnit.MINUTES).build();
 			private final Cache<String, Object> removePackets = CacheBuilder.newBuilder().expireAfterAccess(3, TimeUnit.MINUTES).build();
 			
-			public TeamData(ChatColor color) throws ReflectiveOperationException {
+			public TeamData(int uuid, ChatColor color) throws ReflectiveOperationException {
 				if (!color.isColor()) throw new IllegalArgumentException();
 				id = "glow-" + uuid + color.getChar();
 				Object team = createTeam.newInstance(scoreboardDummy, id);
@@ -604,6 +612,7 @@ public class GlowingEntities implements Listener {
 					"Y",
 					"getDataWatcher",
 					"b",
+					"a",
 					"sendPacket",
 					"k",
 					"setCollisionRule",
@@ -613,6 +622,18 @@ public class GlowingEntities implements Listener {
 					"Z",
 					"Y",
 					"ai",
+					"b",
+					"a",
+					"a",
+					"m",
+					"a",
+					"a"),
+			V1_19(
+					19,
+					"Z",
+					"ab",
+					"ai",
+					"b",
 					"b",
 					"a",
 					"m",
@@ -625,17 +646,19 @@ public class GlowingEntities implements Listener {
 			private String markerTypeId;
 			private String watcherAccessor;
 			private String playerConnection;
+			private String networkManager;
 			private String sendPacket;
 			private String channel;
 			private String teamSetCollsion;
 			private String teamSetColor;
 
-			private ProtocolMappings(int major, String watcherFlags, String markerTypeId, String watcherAccessor, String playerConnection, String sendPacket, String channel, String teamSetCollsion, String teamSetColor) {
+			private ProtocolMappings(int major, String watcherFlags, String markerTypeId, String watcherAccessor, String playerConnection, String networkManager, String sendPacket, String channel, String teamSetCollsion, String teamSetColor) {
 				this.major = major;
 				this.watcherFlags = watcherFlags;
 				this.markerTypeId = markerTypeId;
 				this.watcherAccessor = watcherAccessor;
 				this.playerConnection = playerConnection;
+				this.networkManager = networkManager;
 				this.sendPacket = sendPacket;
 				this.channel = channel;
 				this.teamSetCollsion = teamSetCollsion;
@@ -660,6 +683,10 @@ public class GlowingEntities implements Listener {
 			
 			public String getPlayerConnection() {
 				return playerConnection;
+			}
+			
+			public String getNetworkManager() {
+				return networkManager;
 			}
 			
 			public String getSendPacket() {
