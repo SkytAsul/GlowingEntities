@@ -32,9 +32,9 @@ import io.netty.channel.ChannelPromise;
 /**
  * A Spigot util to easily make entities glow.
  * <p>
- * <b>1.17 -> 1.19</b>
+ * <b>1.17 -> 1.19.2</b>
  * 
- * @version 1.1.0
+ * @version 1.1.1
  * @author SkytAsul
  */
 public class GlowingEntities implements Listener {
@@ -228,7 +228,7 @@ public class GlowingEntities implements Listener {
 		
 		if (glowingData.color != null) Packets.removeGlowingColor(glowingData);
 		
-		/* if (playerData.glowingDatas.isEmpty()) {
+		/* if (playerData.glowingDatas.isEmpty()) { //NOSONAR
 			// if the player do not have any other entity glowing,
 			// we can safely remove all of its data to free some memory
 			Packets.removePacketsHandler(playerData);
@@ -447,6 +447,7 @@ public class GlowingEntities implements Listener {
 			setMetadata(glowingData, glowingData.otherFlags);
 		}
 
+		@SuppressWarnings ("squid:S3011")
 		private static void setMetadata(GlowingData glowingData, byte flags) throws ReflectiveOperationException {
 			List<Object> dataItems = new ArrayList<>(1);
 			dataItems.add(watcherItemConstructor.newInstance(watcherObjectFlags, flags));
@@ -487,14 +488,6 @@ public class GlowingEntities implements Listener {
 			sendPackets(glowingData.player.player, teamData.getEntityRemovePacket(glowingData.teamID));
 		}
 		
-		private static byte receivedFlagsUpdate(PlayerData playerData, int entityID, byte flags) {
-			GlowingData glowingData = playerData.glowingDatas.get(entityID);
-			if (glowingData == null) return flags;
-			
-			glowingData.otherFlags = flags;
-			return computeFlags(glowingData);
-		}
-		
 		private static Channel getChannel(Player player) throws ReflectiveOperationException {
 			return (Channel) channelField.get(networkManager.get(playerConnection.get(getHandle.invoke(player))));
 		}
@@ -504,6 +497,10 @@ public class GlowingEntities implements Listener {
 				@Override
 				public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
 					if (msg.getClass().equals(packetMetadata) && packets.asMap().remove(msg) == null) {
+						int entityID = packetMetadataEntity.getInt(msg);
+						GlowingData glowingData = playerData.glowingDatas.get(entityID);
+						if (glowingData == null) return;
+						
 						List<Object> items = (List<Object>) packetMetadataItems.get(msg);
 						if (items != null) {
 							List<Object> copy = null;
@@ -511,7 +508,8 @@ public class GlowingEntities implements Listener {
 								Object item = items.get(i);
 								if (watcherItemObject.invoke(item).equals(watcherObjectFlags)) {
 									byte flags = (byte) watcherItemDataGet.invoke(item);
-									byte newFlags = receivedFlagsUpdate(playerData, packetMetadataEntity.getInt(msg), flags);
+									glowingData.otherFlags = flags;
+									byte newFlags = computeFlags(glowingData);
 									if (newFlags != flags) {
 										if (copy == null) copy = new ArrayList<>(items);
 										copy.set(i, watcherItemConstructor.newInstance(watcherObjectFlags, newFlags));
@@ -519,7 +517,19 @@ public class GlowingEntities implements Listener {
 									}
 								}
 							}
-							if (copy != null) packetMetadataItems.set(msg, copy);
+							
+							if (copy != null) {
+								// some of the metadata packets are broadcasted to all players near the target entity.
+								// hence, if we directly edit the packet, some users that were not intended to see the
+								// glowing color will be able to see it. We should send a new packet to the viewer only.
+								
+								Object newMsg = packetMetadataConstructor.newInstance(entityID, watcherDummy, false);
+								packetMetadataItems.set(newMsg, copy);
+								packets.put(newMsg, dummy);
+								sendPackets(playerData.player, newMsg);
+								
+								return; // we cancel the send of this packet
+							}
 						}
 					}
 					super.write(ctx, msg, promise);
