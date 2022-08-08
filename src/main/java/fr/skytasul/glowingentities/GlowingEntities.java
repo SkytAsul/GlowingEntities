@@ -34,7 +34,7 @@ import io.netty.channel.ChannelPromise;
  * <p>
  * <b>1.17 -> 1.19.2</b>
  * 
- * @version 1.1.1
+ * @version 1.1.2
  * @author SkytAsul
  */
 public class GlowingEntities implements Listener {
@@ -499,36 +499,38 @@ public class GlowingEntities implements Listener {
 					if (msg.getClass().equals(packetMetadata) && packets.asMap().remove(msg) == null) {
 						int entityID = packetMetadataEntity.getInt(msg);
 						GlowingData glowingData = playerData.glowingDatas.get(entityID);
-						if (glowingData == null) return;
-						
-						List<Object> items = (List<Object>) packetMetadataItems.get(msg);
-						if (items != null) {
-							List<Object> copy = null;
-							for (int i = 0; i < items.size(); i++) {
-								Object item = items.get(i);
-								if (watcherItemObject.invoke(item).equals(watcherObjectFlags)) {
-									byte flags = (byte) watcherItemDataGet.invoke(item);
-									glowingData.otherFlags = flags;
-									byte newFlags = computeFlags(glowingData);
-									if (newFlags != flags) {
-										if (copy == null) copy = new ArrayList<>(items);
-										copy.set(i, watcherItemConstructor.newInstance(watcherObjectFlags, newFlags));
-										// we cannot simply edit the item as it may be backed in the datawatcher
+						if (glowingData != null) {
+							
+							List<Object> items = (List<Object>) packetMetadataItems.get(msg);
+							if (items != null) {
+								
+								List<Object> copy = null;
+								for (int i = 0; i < items.size(); i++) {
+									Object item = items.get(i);
+									if (watcherItemObject.invoke(item).equals(watcherObjectFlags)) {
+										byte flags = (byte) watcherItemDataGet.invoke(item);
+										glowingData.otherFlags = flags;
+										byte newFlags = computeFlags(glowingData);
+										if (newFlags != flags) {
+											if (copy == null) copy = new ArrayList<>(items);
+											copy.set(i, watcherItemConstructor.newInstance(watcherObjectFlags, newFlags));
+											// we cannot simply edit the item as it may be backed in the datawatcher
+										}
 									}
 								}
-							}
-							
-							if (copy != null) {
-								// some of the metadata packets are broadcasted to all players near the target entity.
-								// hence, if we directly edit the packet, some users that were not intended to see the
-								// glowing color will be able to see it. We should send a new packet to the viewer only.
 								
-								Object newMsg = packetMetadataConstructor.newInstance(entityID, watcherDummy, false);
-								packetMetadataItems.set(newMsg, copy);
-								packets.put(newMsg, dummy);
-								sendPackets(playerData.player, newMsg);
-								
-								return; // we cancel the send of this packet
+								if (copy != null) {
+									// some of the metadata packets are broadcasted to all players near the target entity.
+									// hence, if we directly edit the packet, some users that were not intended to see the
+									// glowing color will be able to see it. We should send a new packet to the viewer only.
+									
+									Object newMsg = packetMetadataConstructor.newInstance(entityID, watcherDummy, false);
+									packetMetadataItems.set(newMsg, copy);
+									packets.put(newMsg, dummy);
+									sendPackets(playerData.player, newMsg);
+									
+									return; // we cancel the send of this packet
+								}
 							}
 						}
 					}
