@@ -1,8 +1,10 @@
 # GlowingEntities
 
+![Maven Central](https://img.shields.io/maven-central/v/io.github.skytasul/glowingentities)
+
 An util to easily set glowing entities per-player on a Spigot server.
 
-No ProtocolLib, no dependency, compatible from Minecraft 1.17 to 1.19!
+No ProtocolLib, no dependency, compatible from Minecraft 1.17 to 1.19.3!
 
 ![Glowing entities animation](demo.gif)
 
@@ -17,7 +19,7 @@ Add this requirement to your maven `pom.xml` file:
 <dependency>
   <groupId>io.github.skytasul</groupId>
   <artifactId>glowingentities</artifactId>
-  <version>1.1.0</version>
+  <version>1.1.3</version>
   <scope>compile</scope>
 </dependency>
 ```
