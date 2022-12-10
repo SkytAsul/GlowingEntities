@@ -9,7 +9,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
 import java.util.logging.Logger;
-
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.entity.Entity;
@@ -19,10 +18,8 @@ import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.Plugin;
-
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
-
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelDuplexHandler;
 import io.netty.channel.ChannelHandler;
@@ -32,9 +29,9 @@ import io.netty.channel.ChannelPromise;
 /**
  * A Spigot util to easily make entities glow.
  * <p>
- * <b>1.17 -> 1.19.2</b>
+ * <b>1.17 -> 1.19.3</b>
  * 
- * @version 1.1.2
+ * @version 1.1.3
  * @author SkytAsul
  */
 public class GlowingEntities implements Listener {
@@ -298,9 +295,15 @@ public class GlowingEntities implements Listener {
 		private static Object watcherObjectFlags;
 		private static Object watcherDummy;
 		private static Method watcherGet;
+
 		private static Constructor<?> watcherItemConstructor;
 		private static Method watcherItemObject;
 		private static Method watcherItemDataGet;
+
+		private static Method watcherBCreator;
+		private static Method watcherBId;
+		private static Method watcherBSerializer;
+		private static Method watcherSerializerObject;
 		
 		private static Field playerConnection;
 		private static Method sendPacket;
@@ -367,10 +370,20 @@ public class GlowingEntities implements Listener {
 				watcherDummy = dataWatcherClass.getDeclaredConstructor(entityClass).newInstance(markerEntity);
 				watcherGet = version >= 18 ? dataWatcherClass.getDeclaredMethod("a", watcherObjectFlags.getClass()) : getMethod(dataWatcherClass, "get");
 				
-				Class<?> watcherItem = getNMSClass("network.syncher", "DataWatcher$Item");
-				watcherItemConstructor = watcherItem.getDeclaredConstructor(watcherObjectFlags.getClass(), Object.class);
-				watcherItemObject = watcherItem.getDeclaredMethod("a");
-				watcherItemDataGet = watcherItem.getDeclaredMethod("b");
+				if (version < 19 || (version == 19 && versionMinor < 3)) {
+					Class<?> watcherItem = getNMSClass("network.syncher", "DataWatcher$Item");
+					watcherItemConstructor = watcherItem.getDeclaredConstructor(watcherObjectFlags.getClass(), Object.class);
+					watcherItemObject = watcherItem.getDeclaredMethod("a");
+					watcherItemDataGet = watcherItem.getDeclaredMethod("b");
+				}else {
+					Class<?> watcherB = getNMSClass("network.syncher", "DataWatcher$b");
+					watcherBCreator = watcherB.getDeclaredMethod("a", watcherObjectFlags.getClass(), Object.class);
+					watcherBId = watcherB.getDeclaredMethod("a");
+					watcherBSerializer = watcherB.getDeclaredMethod("b");
+					watcherItemDataGet = watcherB.getDeclaredMethod("c");
+					watcherSerializerObject =
+							getNMSClass("network.syncher", "DataWatcherSerializer").getDeclaredMethod("a", int.class);
+				}
 				
 				/* Connections */
 				
@@ -382,9 +395,14 @@ public class GlowingEntities implements Listener {
 				/* Metadata */
 				
 				packetMetadata = getNMSClass("network.protocol.game", "PacketPlayOutEntityMetadata");
-				packetMetadataConstructor = packetMetadata.getDeclaredConstructor(int.class, dataWatcherClass, boolean.class);
-				packetMetadataEntity = getField(packetMetadata, "a");
-				packetMetadataItems = getField(packetMetadata, "b");
+				packetMetadataEntity = getField(packetMetadata, mappings.getMetadataEntity());
+				packetMetadataItems = getField(packetMetadata, mappings.getMetadataItems());
+				if (version < 19 || (version == 19 && versionMinor < 3)) {
+					packetMetadataConstructor =
+							packetMetadata.getDeclaredConstructor(int.class, dataWatcherClass, boolean.class);
+				} else {
+					packetMetadataConstructor = packetMetadata.getDeclaredConstructor(int.class, List.class);
+				}
 				
 				/* Teams */
 				
@@ -405,7 +423,9 @@ public class GlowingEntities implements Listener {
 				
 				enabled = true;
 			}catch (Exception ex) {
-				String errorMsg = "Laser Beam reflection failed to initialize. The util is disabled. Please ensure your version (" + Bukkit.getServer().getClass().getPackage().getName() + ") is supported.";
+				String errorMsg =
+						"Glowing Entities reflection failed to initialize. The util is disabled. Please ensure your version ("
+								+ Bukkit.getServer().getClass().getPackage().getName() + ") is supported.";
 				if (logger == null) {
 					ex.printStackTrace();
 					System.err.println(errorMsg);
@@ -450,10 +470,16 @@ public class GlowingEntities implements Listener {
 		@SuppressWarnings ("squid:S3011")
 		private static void setMetadata(GlowingData glowingData, byte flags) throws ReflectiveOperationException {
 			List<Object> dataItems = new ArrayList<>(1);
-			dataItems.add(watcherItemConstructor.newInstance(watcherObjectFlags, flags));
+			dataItems.add(watcherItemConstructor != null ? watcherItemConstructor.newInstance(watcherObjectFlags, flags)
+					: watcherBCreator.invoke(null, watcherObjectFlags, flags));
 			
-			Object packetMetadata = packetMetadataConstructor.newInstance(glowingData.entityID, watcherDummy, false);
-			packetMetadataItems.set(packetMetadata, dataItems);
+			Object packetMetadata;
+			if (version < 19 || (version == 19 && versionMinor < 3)) {
+				packetMetadata = packetMetadataConstructor.newInstance(glowingData.entityID, watcherDummy, false);
+				packetMetadataItems.set(packetMetadata, dataItems);
+			} else {
+				packetMetadata = packetMetadataConstructor.newInstance(glowingData.entityID, dataItems);
+			}
 			packets.put(packetMetadata, dummy);
 			sendPackets(glowingData.player.player, packetMetadata);
 		}
@@ -507,13 +533,25 @@ public class GlowingEntities implements Listener {
 								List<Object> copy = null;
 								for (int i = 0; i < items.size(); i++) {
 									Object item = items.get(i);
-									if (watcherItemObject.invoke(item).equals(watcherObjectFlags)) {
+									Object watcherObject;
+									if (watcherItemObject != null) {
+										watcherObject = watcherItemObject.invoke(item);
+									} else {
+										Object serializer = watcherBSerializer.invoke(item);
+										watcherObject = watcherSerializerObject.invoke(serializer, watcherBId.invoke(item));
+									}
+
+									if (watcherObject.equals(watcherObjectFlags)) {
 										byte flags = (byte) watcherItemDataGet.invoke(item);
 										glowingData.otherFlags = flags;
 										byte newFlags = computeFlags(glowingData);
 										if (newFlags != flags) {
 											if (copy == null) copy = new ArrayList<>(items);
-											copy.set(i, watcherItemConstructor.newInstance(watcherObjectFlags, newFlags));
+											copy.set(i,
+													watcherItemConstructor != null
+															? watcherItemConstructor.newInstance(watcherObjectFlags,
+																	newFlags)
+															: watcherBCreator.invoke(null, watcherObjectFlags, newFlags));
 											// we cannot simply edit the item as it may be backed in the datawatcher
 										}
 									}
@@ -524,8 +562,13 @@ public class GlowingEntities implements Listener {
 									// hence, if we directly edit the packet, some users that were not intended to see the
 									// glowing color will be able to see it. We should send a new packet to the viewer only.
 									
-									Object newMsg = packetMetadataConstructor.newInstance(entityID, watcherDummy, false);
-									packetMetadataItems.set(newMsg, copy);
+									Object newMsg;
+									if (version < 19 || (version == 19 && versionMinor < 3)) {
+										newMsg = packetMetadataConstructor.newInstance(entityID, watcherDummy, false);
+										packetMetadataItems.set(newMsg, copy);
+									} else {
+										newMsg = packetMetadataConstructor.newInstance(entityID, copy);
+									}
 									packets.put(newMsg, dummy);
 									sendPackets(playerData.player, newMsg);
 									
@@ -628,7 +671,9 @@ public class GlowingEntities implements Listener {
 					"sendPacket",
 					"k",
 					"setCollisionRule",
-					"setColor"),
+					"setColor",
+					"a",
+					"b"),
 			V1_18(
 					18,
 					"Z",
@@ -639,32 +684,55 @@ public class GlowingEntities implements Listener {
 					"a",
 					"m",
 					"a",
-					"a"),
+					"a",
+					"a",
+					"b"),
 			V1_19(
 					19,
 					"Z",
 					"ab",
-					"ai",
+					null,
 					"b",
 					"b",
 					"a",
 					"m",
 					"a",
-					"a"),
+					"a",
+					null,
+					null) {
+				@Override
+				public String getWatcherAccessor() {
+					return versionMinor < 3 ? "ai" : "al";
+				}
+
+				@Override
+				public String getMetadataEntity() {
+					return versionMinor < 3 ? "a" : "b";
+				}
+
+				@Override
+				public String getMetadataItems() {
+					return versionMinor < 3 ? "b" : "c";
+				}
+			},
 			;
 
 			private final int major;
 			private final String watcherFlags;
-			private String markerTypeId;
-			private String watcherAccessor;
-			private String playerConnection;
-			private String networkManager;
-			private String sendPacket;
-			private String channel;
-			private String teamSetCollsion;
-			private String teamSetColor;
+			private final String markerTypeId;
+			private final String watcherAccessor;
+			private final String playerConnection;
+			private final String networkManager;
+			private final String sendPacket;
+			private final String channel;
+			private final String teamSetCollsion;
+			private final String teamSetColor;
+			private final String metadataEntity;
+			private final String metadataItems;
 
-			private ProtocolMappings(int major, String watcherFlags, String markerTypeId, String watcherAccessor, String playerConnection, String networkManager, String sendPacket, String channel, String teamSetCollsion, String teamSetColor) {
+			private ProtocolMappings(int major, String watcherFlags, String markerTypeId, String watcherAccessor,
+					String playerConnection, String networkManager, String sendPacket, String channel,
+					String teamSetCollsion, String teamSetColor, String metdatataEntity, String metadataItems) {
 				this.major = major;
 				this.watcherFlags = watcherFlags;
 				this.markerTypeId = markerTypeId;
@@ -675,6 +743,8 @@ public class GlowingEntities implements Listener {
 				this.channel = channel;
 				this.teamSetCollsion = teamSetCollsion;
 				this.teamSetColor = teamSetColor;
+				this.metadataEntity = metdatataEntity;
+				this.metadataItems = metadataItems;
 			}
 			
 			public int getMajor() {
@@ -717,6 +787,14 @@ public class GlowingEntities implements Listener {
 				return teamSetColor;
 			}
 			
+			public String getMetadataEntity() {
+				return metadataEntity;
+			}
+
+			public String getMetadataItems() {
+				return metadataItems;
+			}
+
 			public static ProtocolMappings getMappings(int major) {
 				for (ProtocolMappings map : values()) {
 					if (major == map.getMajor()) return map;
