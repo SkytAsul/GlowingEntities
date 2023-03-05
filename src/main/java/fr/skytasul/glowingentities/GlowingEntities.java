@@ -463,6 +463,11 @@ public class GlowingEntities implements Listener {
 			return newFlags;
 		}
 		
+		public static Object createFlagWatcherItem(byte newFlags) throws ReflectiveOperationException {
+			return watcherItemConstructor != null ? watcherItemConstructor.newInstance(watcherObjectFlags, newFlags)
+					: watcherBCreator.invoke(null, watcherObjectFlags, newFlags);
+		}
+
 		public static void removeGlowing(GlowingData glowingData) throws ReflectiveOperationException {
 			setMetadata(glowingData, glowingData.otherFlags);
 		}
@@ -530,7 +535,8 @@ public class GlowingEntities implements Listener {
 							List<Object> items = (List<Object>) packetMetadataItems.get(msg);
 							if (items != null) {
 								
-								List<Object> copy = null;
+								boolean containsFlags = false;
+								boolean edited = false;
 								for (int i = 0; i < items.size(); i++) {
 									Object item = items.get(i);
 									Object watcherObject;
@@ -542,22 +548,42 @@ public class GlowingEntities implements Listener {
 									}
 
 									if (watcherObject.equals(watcherObjectFlags)) {
+										containsFlags = true;
 										byte flags = (byte) watcherItemDataGet.invoke(item);
 										glowingData.otherFlags = flags;
 										byte newFlags = computeFlags(glowingData);
 										if (newFlags != flags) {
-											if (copy == null) copy = new ArrayList<>(items);
-											copy.set(i,
-													watcherItemConstructor != null
-															? watcherItemConstructor.newInstance(watcherObjectFlags,
-																	newFlags)
-															: watcherBCreator.invoke(null, watcherObjectFlags, newFlags));
-											// we cannot simply edit the item as it may be backed in the datawatcher
+											edited = true;
+											items = new ArrayList<>(items);
+											// we cannot simply edit the item as it may be backed in the datawatcher, so we
+											// make a copy of the list
+											items.set(i, createFlagWatcherItem(newFlags));
+											break;
+											// we can break right now as the "flags" datawatcher object may not be present
+											// twice in the same packet
 										}
 									}
 								}
 								
-								if (copy != null) {
+								if (!edited && !containsFlags) {
+									// if the packet does not contain any flag information, we are unsure if it is a packet
+									// simply containing informations about another object's data update OR if it is a packet
+									// containing all non-default informations of the entity. Such as packet can be sent when
+									// the player has got far away from the entity and come in sight distance again.
+									// In this case, we must add manually the "flags" object, otherwise it would stay 0 and
+									// the entity would not be glowing.
+									// Ideally, we should listen for an "entity add" packet to be sure we are in the case
+									// above, but honestly it's annoying because there are multiple types of "entity add"
+									// packets, so we do like this instead. Less performant, but not by far.
+									byte flags = computeFlags(glowingData);
+									if (flags != 0) {
+										edited = true;
+										items = new ArrayList<>(items);
+										items.add(createFlagWatcherItem(flags));
+									}
+								}
+
+								if (edited) {
 									// some of the metadata packets are broadcasted to all players near the target entity.
 									// hence, if we directly edit the packet, some users that were not intended to see the
 									// glowing color will be able to see it. We should send a new packet to the viewer only.
@@ -565,9 +591,9 @@ public class GlowingEntities implements Listener {
 									Object newMsg;
 									if (version < 19 || (version == 19 && versionMinor < 3)) {
 										newMsg = packetMetadataConstructor.newInstance(entityID, watcherDummy, false);
-										packetMetadataItems.set(newMsg, copy);
+										packetMetadataItems.set(newMsg, items);
 									} else {
-										newMsg = packetMetadataConstructor.newInstance(entityID, copy);
+										newMsg = packetMetadataConstructor.newInstance(entityID, items);
 									}
 									packets.put(newMsg, dummy);
 									sendPackets(playerData.player, newMsg);

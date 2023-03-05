@@ -19,7 +19,7 @@ Add this requirement to your maven `pom.xml` file:
 <dependency>
   <groupId>io.github.skytasul</groupId>
   <artifactId>glowingentities</artifactId>
-  <version>1.1.3</version>
+  <version>{VERSION}</version>
   <scope>compile</scope>
 </dependency>
 ```
