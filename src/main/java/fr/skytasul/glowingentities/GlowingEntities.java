@@ -78,7 +78,7 @@ public class GlowingEntities implements Listener {
 	 * Methods such as {@link #setGlowing(int, String, Player, ChatColor, byte)} and
 	 * {@link #unsetGlowing(int, Player)} will no longer be usable.
 	 * 
-	 * @see #enable(Plugin)
+	 * @see #enable()
 	 */
 	public void disable() {
 		if (!enabled)
