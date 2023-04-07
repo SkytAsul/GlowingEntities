@@ -29,9 +29,9 @@ import io.netty.channel.ChannelPromise;
 /**
  * A Spigot util to easily make entities glow.
  * <p>
- * <b>1.17 -> 1.19.3</b>
+ * <b>1.17 -> 1.19.4</b>
  * 
- * @version 1.1.3
+ * @version 1.2.1
  * @author SkytAsul
  */
 public class GlowingEntities implements Listener {
