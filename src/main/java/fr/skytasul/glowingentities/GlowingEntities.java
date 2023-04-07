@@ -416,6 +416,7 @@ public class GlowingEntities implements Listener {
 						getNMSClass("network.protocol", "Packet"));
 				networkManager =
 						getNMSClass("server.network", "PlayerConnection").getDeclaredField(mappings.getNetworkManager());
+				networkManager.setAccessible(true);
 				channelField = getNMSClass("network", "NetworkManager").getDeclaredField(mappings.getChannel());
 
 				/* Metadata */
