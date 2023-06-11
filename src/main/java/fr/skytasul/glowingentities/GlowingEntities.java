@@ -18,6 +18,7 @@ import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.Plugin;
+import org.jetbrains.annotations.NotNull;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import io.netty.channel.Channel;
@@ -29,14 +30,14 @@ import io.netty.channel.ChannelPromise;
 /**
  * A Spigot util to easily make entities glow.
  * <p>
- * <b>1.17 -> 1.19.4</b>
+ * <b>1.17 -> 1.20</b>
  * 
- * @version 1.2.1
+ * @version 1.2.2
  * @author SkytAsul
  */
 public class GlowingEntities implements Listener {
 
-	private final Plugin plugin;
+	private final @NotNull Plugin plugin;
 	private Map<Player, PlayerData> glowing;
 	private boolean enabled = false;
 
@@ -47,12 +48,12 @@ public class GlowingEntities implements Listener {
 	 * 
 	 * @param plugin plugin that will be used to register the events.
 	 */
-	public GlowingEntities(Plugin plugin) {
+	public GlowingEntities(@NotNull Plugin plugin) {
 		if (!Packets.enabled)
 			throw new IllegalStateException(
 					"The Glowing Entities API is disabled. An error has occured during initialization.");
 
-		this.plugin = plugin;
+		this.plugin = Objects.requireNonNull(plugin);
 
 		enable();
 	}
@@ -390,7 +391,8 @@ public class GlowingEntities implements Listener {
 
 				watcherObjectFlags = getField(entityClass, mappings.getWatcherFlags(), null);
 				watcherDummy = dataWatcherClass.getDeclaredConstructor(entityClass).newInstance(markerEntity);
-				watcherGet = version >= 18 ? dataWatcherClass.getDeclaredMethod("a", watcherObjectFlags.getClass())
+				watcherGet = version >= 18
+						? dataWatcherClass.getDeclaredMethod(version < 20 ? "a" : "b", watcherObjectFlags.getClass())
 						: getMethod(dataWatcherClass, "get");
 
 				if (version < 19 || (version == 19 && versionMinor < 3)) {
@@ -651,6 +653,7 @@ public class GlowingEntities implements Listener {
 					super.write(ctx, msg, promise);
 				}
 
+				@SuppressWarnings("rawtypes")
 				private void handlePacketBundle(Object bundle) throws ReflectiveOperationException {
 					Iterable subPackets = (Iterable) packetBundlePackets.invoke(bundle);
 					for (Iterator iterator = subPackets.iterator(); iterator.hasNext();) {
@@ -831,7 +834,21 @@ public class GlowingEntities implements Listener {
 				public String getMetadataItems() {
 					return versionMinor < 3 ? "b" : "c";
 				}
-			};
+			},
+			V1_20(
+					20,
+					"an",
+					"ab",
+					"aj",
+					"c",
+					"h",
+					"a",
+					"m",
+					"a",
+					"a",
+					"b",
+					"c"),
+					;
 
 			private final int major;
 			private final String watcherFlags;

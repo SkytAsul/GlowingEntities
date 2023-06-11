@@ -5,7 +5,7 @@
 
 	<groupId>io.github.skytasul</groupId>
 	<artifactId>glowingentities</artifactId>
-	<version>1.2.1</version>
+	<version>1.2.2</version>
 
 	<name>GlowingEntities</name>
 	<description>A Spigot util to easily make entities glow.</description>
@@ -48,8 +48,8 @@
 	<dependencies>
 		<dependency>
 			<groupId>org.spigotmc</groupId>
-			<artifactId>spigot-api</artifactId>
-			<version>1.19.4-R0.1-SNAPSHOT</version>
+			<artifactId>spigot</artifactId>
+			<version>1.20-R0.1-SNAPSHOT</version>
 			<scope>provided</scope>
 		</dependency>
 
@@ -59,6 +59,13 @@
 			<version>4.1.68.Final</version>
 			<scope>provided</scope>
 		</dependency>
+		
+        <dependency>
+            <groupId>org.jetbrains</groupId>
+            <artifactId>annotations</artifactId>
+            <version>24.0.0</version>
+            <scope>provided</scope>
+        </dependency>
 	</dependencies>
 
 	<build>
