@@ -8,6 +8,8 @@ No ProtocolLib, no dependency, compatible from Minecraft 1.17 to 1.20!
 
 ![Glowing entities animation](demo.gif)
 
+![Glowing blocks animation](demo-blocks.gif)
+
 ## How to install?
 ### 1st method: copying the class
 Copy the [GlowingEntities.java class](src/main/java/fr/skytasul/glowingentities/GlowingEntities.java) to your project

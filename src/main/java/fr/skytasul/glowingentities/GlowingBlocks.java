@@ -64,8 +64,8 @@ public class GlowingBlocks implements Listener {
 	/**
 	 * Disables the API.
 	 * <p>
-	 * Methods such as {@link #setGlowing(int, String, Player, ChatColor, byte)} and
-	 * {@link #unsetGlowing(int, Player)} will no longer be usable.
+	 * Methods such as {@link #setGlowing(Location, Player, ChatColor)} and
+	 * {@link #unsetGlowing(Location, Player)} will no longer be usable.
 	 * 
 	 * @see #enable()
 	 */
