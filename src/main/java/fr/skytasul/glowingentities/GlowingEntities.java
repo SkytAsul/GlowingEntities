@@ -487,9 +487,20 @@ public class GlowingEntities implements Listener {
 
 				Class<?> vec3dClass = getNMSClass("world.phys", "Vec3D");
 				vec3dZero = vec3dClass.getConstructor(double.class, double.class, double.class).newInstance(0d, 0d, 0d);
-				packetAddEntity = getNMSClass("network.protocol.game", "PacketPlayOutSpawnEntity")
-						.getDeclaredConstructor(int.class, UUID.class, double.class, double.class, double.class, float.class,
-								float.class, entityTypesClass, int.class, vec3dClass, double.class);
+
+
+				// arg10 added after version 1.18.2
+				if(version >= 19){
+					packetAddEntity = getNMSClass("network.protocol.game", "PacketPlayOutSpawnEntity")
+							.getDeclaredConstructor(int.class, UUID.class, double.class, double.class, double.class, float.class,
+									float.class, entityTypesClass, int.class, vec3dClass, double.class);
+				}else{
+					packetAddEntity = getNMSClass("network.protocol.game", "PacketPlayOutSpawnEntity")
+							.getDeclaredConstructor(int.class, UUID.class, double.class, double.class, double.class, float.class,
+									float.class, entityTypesClass, int.class, vec3dClass);
+				}
+
+
 				packetRemove = getNMSClass("network.protocol.game", "PacketPlayOutEntityDestroy")
 						.getDeclaredConstructor(version == 17 && versionMinor == 0 ? int.class : int[].class);
 
@@ -604,8 +615,14 @@ public class GlowingEntities implements Listener {
 
 		public static void createEntity(Player player, int entityId, UUID entityUuid, Object entityType, Location location)
 				throws IllegalArgumentException, ReflectiveOperationException {
-			Object packet = packetAddEntity.newInstance(entityId, entityUuid, location.getX(), location.getY(),
-					location.getZ(), location.getPitch(), location.getYaw(), entityType, 0, vec3dZero, 0d);
+			Object packet;
+			if(version >= 19){
+				packet = packetAddEntity.newInstance(entityId, entityUuid, location.getX(), location.getY(),
+						location.getZ(), location.getPitch(), location.getYaw(), entityType, 0, vec3dZero, 0d);
+			}else{
+				packet = packetAddEntity.newInstance(entityId, entityUuid, location.getX(), location.getY(),
+						location.getZ(), location.getPitch(), location.getYaw(), entityType, 0, vec3dZero);
+			}
 			sendPackets(player, packet);
 		}
 
