@@ -489,7 +489,7 @@ public class GlowingEntities implements Listener {
 				vec3dZero = vec3dClass.getConstructor(double.class, double.class, double.class).newInstance(0d, 0d, 0d);
 
 
-				// arg10 added after version 1.18.2
+				// arg10 was added after version 1.18.2
 				if(version >= 19){
 					packetAddEntity = getNMSClass("network.protocol.game", "PacketPlayOutSpawnEntity")
 							.getDeclaredConstructor(int.class, UUID.class, double.class, double.class, double.class, float.class,
