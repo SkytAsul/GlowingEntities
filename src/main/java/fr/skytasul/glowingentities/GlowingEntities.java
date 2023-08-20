@@ -490,11 +490,11 @@ public class GlowingEntities implements Listener {
 
 
 				// arg10 was added after version 1.18.2
-				if(version >= 19){
+				if (version >= 19) {
 					packetAddEntity = getNMSClass("network.protocol.game", "PacketPlayOutSpawnEntity")
 							.getDeclaredConstructor(int.class, UUID.class, double.class, double.class, double.class, float.class,
 									float.class, entityTypesClass, int.class, vec3dClass, double.class);
-				}else{
+				} else {
 					packetAddEntity = getNMSClass("network.protocol.game", "PacketPlayOutSpawnEntity")
 							.getDeclaredConstructor(int.class, UUID.class, double.class, double.class, double.class, float.class,
 									float.class, entityTypesClass, int.class, vec3dClass);
@@ -616,10 +616,10 @@ public class GlowingEntities implements Listener {
 		public static void createEntity(Player player, int entityId, UUID entityUuid, Object entityType, Location location)
 				throws IllegalArgumentException, ReflectiveOperationException {
 			Object packet;
-			if(version >= 19){
+			if (version >= 19) {
 				packet = packetAddEntity.newInstance(entityId, entityUuid, location.getX(), location.getY(),
 						location.getZ(), location.getPitch(), location.getYaw(), entityType, 0, vec3dZero, 0d);
-			}else{
+			} else {
 				packet = packetAddEntity.newInstance(entityId, entityUuid, location.getX(), location.getY(),
 						location.getZ(), location.getPitch(), location.getYaw(), entityType, 0, vec3dZero);
 			}
