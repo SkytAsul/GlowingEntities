@@ -202,7 +202,8 @@ public class GlowingBlocks implements Listener {
 			return;
 		
 		playerData.datas.forEach((location, blockData) -> {
-			if (location.getBlockX() >> 4 == event.getChunk().getX()
+			if (Objects.equals(location.getWorld(), event.getWorld())
+					&& location.getBlockX() >> 4 == event.getChunk().getX()
 					&& location.getBlockZ() >> 4 == event.getChunk().getZ()) {
 				try {
 					blockData.spawn();
