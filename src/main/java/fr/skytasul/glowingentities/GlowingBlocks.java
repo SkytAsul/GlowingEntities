@@ -18,7 +18,6 @@ import org.bukkit.plugin.Plugin;
 import org.jetbrains.annotations.NotNull;
 import fr.skytasul.glowingentities.GlowingEntities.Packets;
 import io.papermc.paper.event.packet.PlayerChunkLoadEvent;
-import io.papermc.paper.event.packet.PlayerChunkUnloadEvent;
 
 /**
  * An extension of {@link GlowingEntities} to make blocks glow as well!
@@ -208,25 +207,6 @@ public class GlowingBlocks implements Listener {
 					&& location.getBlockZ() >> 4 == event.getChunk().getZ()) {
 				try {
 					blockData.spawn();
-				} catch (ReflectiveOperationException ex) {
-					ex.printStackTrace();
-				}
-			}
-		});
-	}
-
-	@EventHandler
-	public void onPlayerChunkUnload(PlayerChunkUnloadEvent event) {
-		PlayerData playerData = glowing.get(event.getPlayer());
-		if (playerData == null)
-			return;
-
-		playerData.datas.forEach((location, blockData) -> {
-			if (Objects.equals(location.getWorld(), event.getWorld())
-					&& location.getBlockX() >> 4 == event.getChunk().getX()
-					&& location.getBlockZ() >> 4 == event.getChunk().getZ()) {
-				try {
-					blockData.remove();
 				} catch (ReflectiveOperationException ex) {
 					ex.printStackTrace();
 				}
