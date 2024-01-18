@@ -28,7 +28,7 @@ import io.netty.channel.*;
 /**
  * A Spigot util to easily make entities glow.
  * <p>
- * <b>1.17 -> 1.20.2</b>
+ * <b>1.17 -> 1.20.4</b>
  *
  * @version 1.3.1
  * @author SkytAsul
@@ -372,7 +372,7 @@ public class GlowingEntities implements Listener {
 				versionMinor = versions.length <= 2 ? 0 : Integer.parseInt(versions[2]);
 				logger.info("Found server version 1." + version + "." + versionMinor);
 
-				mappings = ProtocolMappings.getMappings(version, versionMinor);
+				mappings = version == 20 && versionMinor == 1 ? ProtocolMappings.V1_20 : ProtocolMappings.getMappings(version, versionMinor);
 				if (mappings == null) {
 					mappings = ProtocolMappings.values()[ProtocolMappings.values().length - 1];
 					logger.warning("Loaded not matching version of the mappings for your server version (1." + version + "."
@@ -922,7 +922,7 @@ public class GlowingEntities implements Listener {
 					20,
 					0,
 					"an",
-					"ab",
+					"am",
 					"aj",
 					"c",
 					"h",
@@ -945,8 +945,21 @@ public class GlowingEntities implements Listener {
 					null,
 					null,
 					null,
-					null)
-					;
+					null),
+			V1_20_3(
+					20,
+					3,
+					null,
+					"an",
+					"an",
+					null,
+					null,
+					null,
+					null,
+					null,
+					null,
+					null,
+					null);
 
 			private final int major, minor;
 			private String watcherFlags;
@@ -1064,7 +1077,7 @@ public class GlowingEntities implements Listener {
 						return lastGoodMajor;
 					}
 				}
-				return null;
+				return lastGoodMajor;
 			}
 
 		}
