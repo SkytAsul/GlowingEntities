@@ -372,7 +372,7 @@ public class GlowingEntities implements Listener {
 				versionMinor = versions.length <= 2 ? 0 : Integer.parseInt(versions[2]);
 				logger.info("Found server version 1." + version + "." + versionMinor);
 
-				mappings = version == 20 && versionMinor == 1 ? ProtocolMappings.V1_20 : ProtocolMappings.getMappings(version, versionMinor);
+				mappings = ProtocolMappings.getMappings(version, versionMinor);
 				if (mappings == null) {
 					mappings = ProtocolMappings.values()[ProtocolMappings.values().length - 1];
 					logger.warning("Loaded not matching version of the mappings for your server version (1." + version + "."
@@ -1077,7 +1077,7 @@ public class GlowingEntities implements Listener {
 						return lastGoodMajor;
 					}
 				}
-				return lastGoodMajor;
+				return null;
 			}
 
 		}
