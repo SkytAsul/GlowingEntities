@@ -28,7 +28,7 @@ import io.netty.channel.*;
 /**
  * A Spigot util to easily make entities glow.
  * <p>
- * <b>1.17 -> 1.20.2</b>
+ * <b>1.17 -> 1.20.4</b>
  *
  * @version 1.3.1
  * @author SkytAsul
@@ -922,7 +922,7 @@ public class GlowingEntities implements Listener {
 					20,
 					0,
 					"an",
-					"ab",
+					"am",
 					"aj",
 					"c",
 					"h",
@@ -945,8 +945,21 @@ public class GlowingEntities implements Listener {
 					null,
 					null,
 					null,
-					null)
-					;
+					null),
+			V1_20_3(
+					20,
+					3,
+					null,
+					"an",
+					"an",
+					null,
+					null,
+					null,
+					null,
+					null,
+					null,
+					null,
+					null);
 
 			private final int major, minor;
 			private String watcherFlags;
