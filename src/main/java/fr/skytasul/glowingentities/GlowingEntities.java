@@ -375,8 +375,7 @@ public class GlowingEntities implements Listener {
 				mappings = ProtocolMappings.getMappings(version, versionMinor);
 				if (mappings == null) {
 					mappings = ProtocolMappings.values()[ProtocolMappings.values().length - 1];
-					logger.warning("Loaded not matching version of the mappings for your server version (1." + version + "."
-							+ versionMinor + ")");
+					logger.warning("Loaded not matching version of the mappings for your server version");
 				}
 				logger.info("Loaded mappings " + mappings.name());
 
@@ -1066,18 +1065,23 @@ public class GlowingEntities implements Listener {
 			}
 
 			public static ProtocolMappings getMappings(int major, int minor) {
-				ProtocolMappings lastGoodMajor = null;
+				ProtocolMappings lastGood = null;
 				for (ProtocolMappings map : values()) {
+					// loop in ascending version order
 					if (major == map.getMajor()) {
-						lastGoodMajor = map;
-
 						if (minor == map.getMinor())
-							return map;
-					} else if (lastGoodMajor != null) {
-						return lastGoodMajor;
+							return map; // perfect match
+
+						if (minor > map.getMinor())
+							lastGood = map; // looking for newer minor version
+
+						if (minor < map.getMinor())
+							return lastGood; // looking for older minor version: we get the last correct one
 					}
 				}
-				return null;
+				// will return either null if no mappings matched the major => fallback to latest major with a
+				// warning, either the last mappings with same major and smaller minor
+				return lastGood;
 			}
 
 		}
