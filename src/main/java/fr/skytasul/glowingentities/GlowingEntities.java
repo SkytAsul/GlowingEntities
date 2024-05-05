@@ -1,15 +1,8 @@
 package fr.skytasul.glowingentities;
 
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
-import java.lang.reflect.ParameterizedType;
-import java.util.*;
-import java.util.concurrent.ThreadLocalRandom;
-import java.util.concurrent.TimeUnit;
-import java.util.logging.Level;
-import java.util.logging.LogRecord;
-import java.util.logging.Logger;
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
+import io.netty.channel.*;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
@@ -21,16 +14,20 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.Plugin;
 import org.jetbrains.annotations.NotNull;
-import com.google.common.cache.Cache;
-import com.google.common.cache.CacheBuilder;
-import io.netty.channel.*;
+import java.lang.reflect.*;
+import java.util.*;
+import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
+import java.util.logging.LogRecord;
+import java.util.logging.Logger;
 
 /**
  * A Spigot util to easily make entities glow.
  * <p>
- * <b>1.17 -> 1.20.4</b>
+ * <b>1.17 -> 1.20.6</b>
  *
- * @version 1.3.1
+ * @version 1.3.3
  * @author SkytAsul
  */
 public class GlowingEntities implements Listener {
@@ -372,9 +369,11 @@ public class GlowingEntities implements Listener {
 				versionMinor = versions.length <= 2 ? 0 : Integer.parseInt(versions[2]);
 				logger.info("Found server version 1." + version + "." + versionMinor);
 
-				mappings = ProtocolMappings.getMappings(version, versionMinor);
+				boolean remapped = Bukkit.getServer().getClass().getPackage().getName().split("\\.").length == 3;
+
+				mappings = ProtocolMappings.getMappings(version, versionMinor, remapped);
 				if (mappings == null) {
-					mappings = ProtocolMappings.values()[ProtocolMappings.values().length - 1];
+					mappings = ProtocolMappings.getLast(remapped);
 					logger.warning("Loaded not matching version of the mappings for your server version");
 				}
 				logger.info("Loaded mappings " + mappings.name());
@@ -393,11 +392,30 @@ public class GlowingEntities implements Listener {
 
 				Class<?> dataWatcherClass = getNMSClass("network.syncher", "DataWatcher");
 
+				Class<?>[] watcherConstructorArgsType;
+				Object[] watcherConstructorArgs;
+				if (version > 20 || (version == 20 && versionMinor >= 5)) {
+					watcherConstructorArgsType = new Class<?>[] {getNMSClass("network.syncher", "SyncedDataHolder"),
+							getNMSClass("network.syncher", "SynchedEntityData$DataItem").arrayType()};
+					watcherConstructorArgs = new Object[] {markerEntity, new Object[0]};
+					var watcherBuilder = getNMSClass("network.syncher", "SynchedEntityData$Builder")
+							.getDeclaredConstructor(getNMSClass("network.syncher", "SyncedDataHolder"))
+							.newInstance(markerEntity);
+					Field watcherBuilderItems = watcherBuilder.getClass().getDeclaredField(remapped ? "itemsById" : "b");
+					watcherBuilderItems.setAccessible(true); // NOSONAR idc
+					watcherBuilderItems.set(watcherBuilder,
+							Array.newInstance(watcherBuilderItems.getType().componentType(), 0));
+					watcherDummy =
+							watcherBuilder.getClass().getDeclaredMethod(remapped ? "build" : "a").invoke(watcherBuilder);
+				} else {
+					watcherConstructorArgsType = new Class<?>[] {entityClass};
+					watcherConstructorArgs = new Object[] {markerEntity};
+					watcherDummy = dataWatcherClass.getDeclaredConstructor(watcherConstructorArgsType)
+							.newInstance(watcherConstructorArgs);
+				}
+
 				watcherObjectFlags = getField(entityClass, mappings.getWatcherFlags(), null);
-				watcherDummy = dataWatcherClass.getDeclaredConstructor(entityClass).newInstance(markerEntity);
-				watcherGet = version >= 18
-						? dataWatcherClass.getDeclaredMethod(version < 20 ? "a" : "b", watcherObjectFlags.getClass())
-						: getMethod(dataWatcherClass, "get");
+				watcherGet = dataWatcherClass.getDeclaredMethod(mappings.getWatcherGet(), watcherObjectFlags.getClass());
 
 				if (version < 19 || (version == 19 && versionMinor < 3)) {
 					Class<?> watcherItem = getNMSClass("network.syncher", "DataWatcher$Item");
@@ -405,7 +423,8 @@ public class GlowingEntities implements Listener {
 					watcherItemObject = watcherItem.getDeclaredMethod("a");
 					watcherItemDataGet = watcherItem.getDeclaredMethod("b");
 				} else {
-					Class<?> watcherB = getNMSClass("network.syncher", "DataWatcher$b");
+					String subclass = version >= 20 || (version == 20 && versionMinor >= 5) ? "c" : "b";
+					Class<?> watcherB = getNMSClass("network.syncher", "DataWatcher$" + subclass);
 					watcherBCreator = watcherB.getDeclaredMethod("a", watcherObjectFlags.getClass(), Object.class);
 					watcherBId = watcherB.getDeclaredMethod("a");
 					watcherBSerializer = watcherB.getDeclaredMethod("b");
@@ -425,7 +444,8 @@ public class GlowingEntities implements Listener {
 
 				if (version > 19 || (version == 19 && versionMinor >= 4)) {
 					packetBundle = getNMSClass("network.protocol.game", "ClientboundBundlePacket");
-					packetBundlePackets = packetBundle.getMethod("a");
+					packetBundlePackets =
+							packetBundle.getMethod(version > 20 || (version == 20 && versionMinor >= 5) ? "b" : "a");
 				}
 
 				/* Metadata */
@@ -850,9 +870,11 @@ public class GlowingEntities implements Listener {
 			V1_17(
 					17,
 					0,
+					false,
 					"Z",
 					"Y",
 					"getDataWatcher",
+					"get",
 					"b",
 					"a",
 					"sendPacket",
@@ -864,9 +886,11 @@ public class GlowingEntities implements Listener {
 			V1_18(
 					18,
 					0,
+					false,
 					"Z",
 					"Y",
 					"ai",
+					"a",
 					"b",
 					"a",
 					"a",
@@ -878,9 +902,11 @@ public class GlowingEntities implements Listener {
 			V1_19(
 					19,
 					0,
+					false,
 					"Z",
 					"ab",
 					"ai",
+					null,
 					"b",
 					"b",
 					"a",
@@ -892,9 +918,11 @@ public class GlowingEntities implements Listener {
 			V1_19_3(
 					19,
 					3,
+					false,
 					null,
 					null,
 					"al",
+					null,
 					null,
 					null,
 					null,
@@ -906,9 +934,11 @@ public class GlowingEntities implements Listener {
 			V1_19_4(
 					19,
 					4,
+					false,
 					"an",
 					null,
 					"aj",
+					null,
 					null,
 					"h",
 					null,
@@ -920,9 +950,11 @@ public class GlowingEntities implements Listener {
 			V1_20(
 					20,
 					0,
+					false,
 					"an",
 					"am",
 					"aj",
+					"b",
 					"c",
 					"h",
 					"a",
@@ -934,7 +966,9 @@ public class GlowingEntities implements Listener {
 			V1_20_2(
 					20,
 					2,
+					false,
 					"ao",
+					null,
 					null,
 					"al",
 					null,
@@ -948,6 +982,7 @@ public class GlowingEntities implements Listener {
 			V1_20_3(
 					20,
 					3,
+					false,
 					null,
 					"an",
 					"an",
@@ -958,12 +993,49 @@ public class GlowingEntities implements Listener {
 					null,
 					null,
 					null,
-					null);
+					null,
+					null),
+			V1_20_5(
+					20,
+					5,
+					false,
+					"ap",
+					"aq",
+					"ap",
+					"a",
+					null,
+					"e",
+					null,
+					null,
+					null,
+					null,
+					"c",
+					"d"),
+			V1_20_5_REMAPPED(
+					20,
+					5,
+					true,
+					"DATA_SHARED_FLAGS_ID",
+					"MARKER",
+					"getEntityData",
+					"get",
+					"connection",
+					"connection",
+					"send",
+					"channel",
+					"setCollisionRule",
+					"setColor",
+					"id",
+					"packedItems"
+					)
+			;
 
 			private final int major, minor;
+			private final boolean remapped;
 			private String watcherFlags;
 			private String markerTypeId;
 			private String watcherAccessor;
+			private String watcherGet;
 			private String playerConnection;
 			private String networkManager;
 			private String sendPacket;
@@ -973,14 +1045,17 @@ public class GlowingEntities implements Listener {
 			private String metadataEntity;
 			private String metadataItems;
 
-			private ProtocolMappings(int major, int minor, String watcherFlags, String markerTypeId, String watcherAccessor,
+			private ProtocolMappings(int major, int minor, boolean remapped,
+					String watcherFlags, String markerTypeId, String watcherAccessor, String watcherGet,
 					String playerConnection, String networkManager, String sendPacket, String channel,
 					String teamSetCollsion, String teamSetColor, String metdatataEntity, String metadataItems) {
 				this.major = major;
 				this.minor = minor;
+				this.remapped = remapped;
 				this.watcherFlags = watcherFlags;
 				this.markerTypeId = markerTypeId;
 				this.watcherAccessor = watcherAccessor;
+				this.watcherGet = watcherGet;
 				this.playerConnection = playerConnection;
 				this.networkManager = networkManager;
 				this.sendPacket = sendPacket;
@@ -999,6 +1074,10 @@ public class GlowingEntities implements Listener {
 				return minor;
 			}
 
+			public boolean isRemapped() {
+				return remapped;
+			}
+
 			public String getWatcherFlags() {
 				return watcherFlags;
 			}
@@ -1009,6 +1088,10 @@ public class GlowingEntities implements Listener {
 
 			public String getWatcherAccessor() {
 				return watcherAccessor;
+			}
+
+			public String getWatcherGet() {
+				return watcherGet;
 			}
 
 			public String getPlayerConnection() {
@@ -1053,20 +1136,29 @@ public class GlowingEntities implements Listener {
 			}
 
 			private static void fillAll() throws ReflectiveOperationException {
+				ProtocolMappings lastUnmapped = V1_17;
+				ProtocolMappings lastRemapped = V1_20_5_REMAPPED;
 				// /!\ we start at 1
 				for (int i = 1; i < ProtocolMappings.values().length; i++) {
 					ProtocolMappings map = ProtocolMappings.values()[i];
 					for (Field field : ProtocolMappings.class.getDeclaredFields()) {
 						if (field.getType() == String.class && field.get(map) == null) {
-							field.set(map, field.get(ProtocolMappings.values()[i - 1]));
+							field.set(map, field.get(map.isRemapped() ? lastRemapped : lastUnmapped));
 						}
 					}
+					if (map.isRemapped())
+						lastRemapped = map;
+					else
+						lastUnmapped = map;
 				}
 			}
 
-			public static ProtocolMappings getMappings(int major, int minor) {
+			public static ProtocolMappings getMappings(int major, int minor, boolean remapped) {
 				ProtocolMappings lastGood = null;
 				for (ProtocolMappings map : values()) {
+					if (map.isRemapped() != remapped)
+						continue;
+
 					// loop in ascending version order
 					if (major == map.getMajor()) {
 						if (minor == map.getMinor())
@@ -1082,6 +1174,10 @@ public class GlowingEntities implements Listener {
 				// will return either null if no mappings matched the major => fallback to latest major with a
 				// warning, either the last mappings with same major and smaller minor
 				return lastGood;
+			}
+
+			public static ProtocolMappings getLast(boolean remapped) {
+				return Arrays.stream(values()).filter(map -> map.isRemapped() == remapped).reduce((l, r) -> r).get();
 			}
 
 		}
