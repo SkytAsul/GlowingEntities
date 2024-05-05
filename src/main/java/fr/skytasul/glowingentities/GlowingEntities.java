@@ -392,13 +392,8 @@ public class GlowingEntities implements Listener {
 
 				Class<?> dataWatcherClass = getNMSClass("network.syncher", "DataWatcher");
 
-				Class<?>[] watcherConstructorArgsType;
-				Object[] watcherConstructorArgs;
 				if (version > 20 || (version == 20 && versionMinor >= 5)) {
-					watcherConstructorArgsType = new Class<?>[] {getNMSClass("network.syncher", "SyncedDataHolder"),
-							getNMSClass("network.syncher", "SynchedEntityData$DataItem").arrayType()};
-					watcherConstructorArgs = new Object[] {markerEntity, new Object[0]};
-					var watcherBuilder = getNMSClass("network.syncher", "SynchedEntityData$Builder")
+					var watcherBuilder = getNMSClass("network.syncher", "DataWatcher$a")
 							.getDeclaredConstructor(getNMSClass("network.syncher", "SyncedDataHolder"))
 							.newInstance(markerEntity);
 					Field watcherBuilderItems = watcherBuilder.getClass().getDeclaredField(remapped ? "itemsById" : "b");
@@ -408,8 +403,8 @@ public class GlowingEntities implements Listener {
 					watcherDummy =
 							watcherBuilder.getClass().getDeclaredMethod(remapped ? "build" : "a").invoke(watcherBuilder);
 				} else {
-					watcherConstructorArgsType = new Class<?>[] {entityClass};
-					watcherConstructorArgs = new Object[] {markerEntity};
+					var watcherConstructorArgsType = new Class<?>[] {entityClass};
+					var watcherConstructorArgs = new Object[] {markerEntity};
 					watcherDummy = dataWatcherClass.getDeclaredConstructor(watcherConstructorArgsType)
 							.newInstance(watcherConstructorArgs);
 				}
@@ -778,14 +773,6 @@ public class GlowingEntities implements Listener {
 		}
 
 		/* Reflection utils */
-		private static Method getMethod(Class<?> clazz, String name) throws NoSuchMethodException {
-			for (Method m : clazz.getDeclaredMethods()) {
-				if (m.getName().equals(name))
-					return m;
-			}
-			throw new NoSuchMethodException(name + " in " + clazz.getName());
-		}
-
 		@Deprecated
 		private static Object getField(Class<?> clazz, String name, Object instance) throws ReflectiveOperationException {
 			return getField(clazz, name).get(instance);
@@ -1028,6 +1015,7 @@ public class GlowingEntities implements Listener {
 					"id",
 					"packedItems"
 					)
+			// remapping not complete: should also use remapped class names
 			;
 
 			private final int major, minor;
