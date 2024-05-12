@@ -418,7 +418,7 @@ public class GlowingEntities implements Listener {
 					watcherItemObject = watcherItem.getDeclaredMethod("a");
 					watcherItemDataGet = watcherItem.getDeclaredMethod("b");
 				} else {
-					String subclass = version >= 20 || (version == 20 && versionMinor >= 5) ? "c" : "b";
+					String subclass = version > 20 || (version == 20 && versionMinor >= 5) ? "c" : "b";
 					Class<?> watcherB = getNMSClass("network.syncher", "DataWatcher$" + subclass);
 					watcherBCreator = watcherB.getDeclaredMethod("a", watcherObjectFlags.getClass(), Object.class);
 					watcherBId = watcherB.getDeclaredMethod("a");
@@ -956,8 +956,8 @@ public class GlowingEntities implements Listener {
 					false,
 					"ao",
 					null,
-					null,
 					"al",
+					null,
 					null,
 					"c",
 					"b",
