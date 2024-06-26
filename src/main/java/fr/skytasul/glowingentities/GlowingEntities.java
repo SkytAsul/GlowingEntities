@@ -25,9 +25,9 @@ import java.util.logging.Logger;
 /**
  * A Spigot util to easily make entities glow.
  * <p>
- * <b>1.17 -> 1.20.6</b>
+ * <b>1.17 -> 1.21</b>
  *
- * @version 1.3.4
+ * @version 1.3.5
  * @author SkytAsul
  */
 public class GlowingEntities implements Listener {
