@@ -1015,24 +1015,24 @@ public class GlowingEntities implements Listener {
 					"id",
 					"packedItems"
 					),
+			// remapping not complete: should also use remapped class names
 			V1_21(
 					21,
 					0,
 					false,
-					"ap",
-					"aq",
+					null,
+					null,
 					"ar",
-					"a",
-					"c",
-					"e",
-					"b",
-					"n",
-					"a",
-					"a",
-					"c",
-					"d"
-					),
-			// remapping not complete: should also use remapped class names
+					null,
+					null,
+					null,
+					null,
+					null,
+					null,
+					null,
+					null,
+					null
+					)
 			;
 
 			private final int major, minor;
