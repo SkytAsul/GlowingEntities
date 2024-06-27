@@ -20,7 +20,7 @@ Add this requirement to your maven `pom.xml` file:
 
 ```xml
 <dependency>
-  <groupId>io.github.skytasul</groupId>
+  <groupId>fr.skytasul</groupId>
   <artifactId>glowingentities</artifactId>
   <version>{VERSION}</version>
   <scope>compile</scope>
