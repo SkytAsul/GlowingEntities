@@ -1,6 +1,6 @@
 # GlowingEntities
 
-![Maven Central](https://img.shields.io/maven-central/v/io.github.skytasul/glowingentities)
+![Maven Central](https://img.shields.io/maven-central/v/fr.skytasul/glowingentities)
 
 An util to easily set glowing entities (or blocks) per-player on a Spigot server.
 
@@ -27,6 +27,10 @@ Add this requirement to your maven `pom.xml` file:
 </dependency>
 ```
 Additionnally, you can use the maven shade plugin to relocate the classes location.
+
+> [!NOTE]  
+> Until 1.3.4, the util was under the groupId `io.github.skytasul`.  
+> After 1.3.5, it has changed to `fr.skytasul`.
 
 ## How to use?
 ### Make entities glow
