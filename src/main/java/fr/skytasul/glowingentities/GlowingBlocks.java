@@ -1,11 +1,7 @@
 package fr.skytasul.glowingentities;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
-import java.util.UUID;
-import java.util.concurrent.ThreadLocalRandom;
-import java.util.concurrent.atomic.AtomicInteger;
+import fr.skytasul.glowingentities.GlowingEntities.Packets;
+import io.papermc.paper.event.packet.PlayerChunkLoadEvent;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
@@ -16,8 +12,12 @@ import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
 import org.bukkit.plugin.Plugin;
 import org.jetbrains.annotations.NotNull;
-import fr.skytasul.glowingentities.GlowingEntities.Packets;
-import io.papermc.paper.event.packet.PlayerChunkLoadEvent;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Objects;
+import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * An extension of {@link GlowingEntities} to make blocks glow as well!
@@ -34,7 +34,7 @@ public class GlowingBlocks implements Listener {
 
 	/**
 	 * Initializes the Glowing blocks API.
-	 * 
+	 *
 	 * @param plugin plugin that will be used to register the events.
 	 */
 	public GlowingBlocks(@NotNull Plugin plugin) {
@@ -47,7 +47,7 @@ public class GlowingBlocks implements Listener {
 
 	/**
 	 * Enables the Glowing blocks API.
-	 * 
+	 *
 	 * @see #disable()
 	 */
 	public void enable() {
@@ -66,7 +66,7 @@ public class GlowingBlocks implements Listener {
 	 * <p>
 	 * Methods such as {@link #setGlowing(Location, Player, ChatColor)} and
 	 * {@link #unsetGlowing(Location, Player)} will no longer be usable.
-	 * 
+	 *
 	 * @see #enable()
 	 */
 	public void disable() {
@@ -102,7 +102,7 @@ public class GlowingBlocks implements Listener {
 
 	/**
 	 * Makes the {@link Block} passed as a parameter glow with the specified color.
-	 * 
+	 *
 	 * @param block block to make glow
 	 * @param receiver player which will see the block glowing
 	 * @param color color of the glowing effect
@@ -115,7 +115,7 @@ public class GlowingBlocks implements Listener {
 
 	/**
 	 * Makes the block at the location passed as a parameter glow with the specified color.
-	 * 
+	 *
 	 * @param block location of the block to make glow
 	 * @param receiver player which will see the block glowing
 	 * @param color color of the glowing effect
@@ -145,7 +145,7 @@ public class GlowingBlocks implements Listener {
 
 	/**
 	 * Makes the {@link Block} passed as a parameter loose its glowing effect.
-	 * 
+	 *
 	 * @param block block to remove glowing effect from
 	 * @param receiver player which will no longer see the glowing effect
 	 * @throws ReflectiveOperationException
@@ -156,7 +156,7 @@ public class GlowingBlocks implements Listener {
 
 	/**
 	 * Makes the block at the location passed as a parameter loose its glowing effect.
-	 * 
+	 *
 	 * @param block location of the block to remove glowing effect from
 	 * @param receiver player which will no longer see the glowing effect
 	 * @throws ReflectiveOperationException
@@ -200,7 +200,7 @@ public class GlowingBlocks implements Listener {
 		PlayerData playerData = glowing.get(event.getPlayer());
 		if (playerData == null)
 			return;
-		
+
 		playerData.datas.forEach((location, blockData) -> {
 			if (Objects.equals(location.getWorld(), event.getWorld())
 					&& location.getBlockX() >> 4 == event.getChunk().getX()
@@ -224,7 +224,7 @@ public class GlowingBlocks implements Listener {
 
 	private class GlowingBlockData {
 
-		private static final byte FLAGS = 1 << 5;
+		private static final byte FLAGS = 1 << 5; // invisibility flag
 		private static final AtomicInteger ENTITY_ID_COUNTER =
 				new AtomicInteger(ThreadLocalRandom.current().nextInt(1_000_000, 2_000_000_000));
 

@@ -2,6 +2,14 @@ package fr.skytasul.glowingentities;
 
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
+import fr.skytasul.reflection.MappedReflectionAccessor;
+import fr.skytasul.reflection.ReflectionAccessor;
+import fr.skytasul.reflection.ReflectionAccessor.ClassAccessor;
+import fr.skytasul.reflection.ReflectionAccessor.ClassAccessor.FieldAccessor;
+import fr.skytasul.reflection.TransparentReflectionAccessor;
+import fr.skytasul.reflection.Version;
+import fr.skytasul.reflection.mappings.files.MappingFileReader;
+import fr.skytasul.reflection.mappings.files.ProguardMapping;
 import io.netty.channel.*;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
@@ -14,7 +22,10 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.Plugin;
 import org.jetbrains.annotations.NotNull;
-import java.lang.reflect.*;
+import java.lang.reflect.Array;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
@@ -44,9 +55,7 @@ public class GlowingEntities implements Listener {
 	 * @param plugin plugin that will be used to register the events.
 	 */
 	public GlowingEntities(@NotNull Plugin plugin) {
-		if (!Packets.enabled)
-			throw new IllegalStateException(
-					"The Glowing Entities API is disabled. An error has occured during initialization.");
+		Packets.ensureInitialized();
 
 		this.plugin = Objects.requireNonNull(plugin);
 
@@ -296,11 +305,12 @@ public class GlowingEntities implements Listener {
 		private static Object dummy = new Object();
 
 		private static Logger logger;
-		private static int version;
-		private static int versionMinor;
-		private static String cpack = Bukkit.getServer().getClass().getPackage().getName() + ".";
-		private static ProtocolMappings mappings;
-		public static boolean enabled = false;
+		private static String cpack;
+		private static Version version;
+
+		private static boolean isEnabled = false;
+		private static boolean hasInitialized = false;
+		private static Throwable initializationError = null;
 
 		private static Method getHandle;
 		private static Method getDataWatcher;
@@ -324,11 +334,11 @@ public class GlowingEntities implements Listener {
 		private static Method sendPacket;
 		private static Field networkManager;
 		private static Field channelField;
-		private static Class<?> packetBundle;
+		private static ClassAccessor packetBundle;
 		private static Method packetBundlePackets;
 
 		// Metadata
-		private static Class<?> packetMetadata;
+		private static ClassAccessor packetMetadata;
 		private static Constructor<?> packetMetadataConstructor;
 		private static Field packetMetadataEntity;
 		private static Field packetMetadataItems;
@@ -346,12 +356,23 @@ public class GlowingEntities implements Listener {
 		private static Method getColorConstant;
 
 		// Entities
-		static Object shulkerEntityType;
+		protected static Object shulkerEntityType;
 		private static Constructor<?> packetAddEntity;
 		private static Constructor<?> packetRemove;
 		private static Object vec3dZero;
 
-		static {
+		protected static void ensureInitialized() {
+			if (!hasInitialized)
+				initialize();
+
+			if (!isEnabled)
+				throw new IllegalStateException(
+						"The Glowing Entities API is disabled. An error has occured during first initialization.",
+						initializationError);
+		}
+
+		private static void initialize() {
+			hasInitialized = true;
 			try {
 				logger = new Logger("GlowingEntities", null) {
 					@Override
@@ -364,156 +385,48 @@ public class GlowingEntities implements Listener {
 				logger.setLevel(Level.ALL);
 
 				// e.g. Bukkit.getBukkitVersion() -> 1.17.1-R0.1-SNAPSHOT
-				String[] versions = Bukkit.getBukkitVersion().split("-R")[0].split("\\.");
-				version = Integer.parseInt(versions[1]);
-				versionMinor = versions.length <= 2 ? 0 : Integer.parseInt(versions[2]);
-				logger.info("Found server version 1." + version + "." + versionMinor);
+				var versionString = Bukkit.getBukkitVersion().split("-R")[0];
+				var serverVersion = Version.parse(versionString);
+				logger.info("Found server version " + serverVersion);
+
+				cpack = Bukkit.getServer().getClass().getPackage().getName() + ".";
 
 				boolean remapped = Bukkit.getServer().getClass().getPackage().getName().split("\\.").length == 3;
+				ReflectionAccessor reflection;
 
-				mappings = ProtocolMappings.getMappings(version, versionMinor, remapped);
-				if (mappings == null) {
-					mappings = ProtocolMappings.getLast(remapped);
-					logger.warning("Loaded not matching version of the mappings for your server version");
-				}
-				logger.info("Loaded mappings " + mappings.name());
-
-				/* Global variables */
-
-				Class<?> entityClass = getNMSClass("world.entity", "Entity");
-				Class<?> entityTypesClass = getNMSClass("world.entity", "EntityTypes");
-				Object markerEntity = getNMSClass("world.entity", "Marker").getDeclaredConstructors()[0]
-						.newInstance(getField(entityTypesClass, mappings.getMarkerTypeId(), null), null);
-
-				getHandle = getCraftClass("entity", "CraftEntity").getDeclaredMethod("getHandle");
-				getDataWatcher = entityClass.getDeclaredMethod(mappings.getWatcherAccessor());
-
-				/* Synched datas */
-
-				Class<?> dataWatcherClass = getNMSClass("network.syncher", "DataWatcher");
-
-				if (version > 20 || (version == 20 && versionMinor >= 5)) {
-					var watcherBuilder = getNMSClass("network.syncher", "DataWatcher$a")
-							.getDeclaredConstructor(getNMSClass("network.syncher", "SyncedDataHolder"))
-							.newInstance(markerEntity);
-					Field watcherBuilderItems = watcherBuilder.getClass().getDeclaredField(remapped ? "itemsById" : "b");
-					watcherBuilderItems.setAccessible(true); // NOSONAR idc
-					watcherBuilderItems.set(watcherBuilder,
-							Array.newInstance(watcherBuilderItems.getType().componentType(), 0));
-					watcherDummy =
-							watcherBuilder.getClass().getDeclaredMethod(remapped ? "build" : "a").invoke(watcherBuilder);
+				if (remapped) {
+					version = serverVersion;
+					reflection = new TransparentReflectionAccessor();
+					logger.info("Loaded transparent mappings.");
 				} else {
-					var watcherConstructorArgsType = new Class<?>[] {entityClass};
-					var watcherConstructorArgs = new Object[] {markerEntity};
-					watcherDummy = dataWatcherClass.getDeclaredConstructor(watcherConstructorArgsType)
-							.newInstance(watcherConstructorArgs);
+					var mappingsFile =
+							new String(GlowingEntities.class.getResourceAsStream("mappings/spigot.txt").readAllBytes());
+					var mappingsReader = new MappingFileReader(new ProguardMapping(false), mappingsFile.lines().toList());
+					mappingsReader.readAvailableVersions();
+					var foundVersion = mappingsReader.keepBestMatchedVersion(serverVersion);
+
+					if (foundVersion.isEmpty())
+						throw new UnsupportedOperationException("Cannot find mappings to match server version");
+
+					if (!foundVersion.get().is(serverVersion))
+						logger.warning("Loaded not matching version of the mappings for your server version");
+
+					version = foundVersion.get();
+					mappingsReader.parseMappings();
+					var mappings = mappingsReader.getParsedMappings(foundVersion.get());
+					logger.info("Loaded mappings for " + version);
+					reflection = new MappedReflectionAccessor(mappings);
 				}
 
-				watcherObjectFlags = getField(entityClass, mappings.getWatcherFlags(), null);
-				watcherGet = dataWatcherClass.getDeclaredMethod(mappings.getWatcherGet(), watcherObjectFlags.getClass());
+				loadReflection(reflection, version);
 
-				if (version < 19 || (version == 19 && versionMinor < 3)) {
-					Class<?> watcherItem = getNMSClass("network.syncher", "DataWatcher$Item");
-					watcherItemConstructor = watcherItem.getDeclaredConstructor(watcherObjectFlags.getClass(), Object.class);
-					watcherItemObject = watcherItem.getDeclaredMethod("a");
-					watcherItemDataGet = watcherItem.getDeclaredMethod("b");
-				} else {
-					String subclass = version > 20 || (version == 20 && versionMinor >= 5) ? "c" : "b";
-					Class<?> watcherB = getNMSClass("network.syncher", "DataWatcher$" + subclass);
-					watcherBCreator = watcherB.getDeclaredMethod("a", watcherObjectFlags.getClass(), Object.class);
-					watcherBId = watcherB.getDeclaredMethod("a");
-					watcherBSerializer = watcherB.getDeclaredMethod("b");
-					watcherItemDataGet = watcherB.getDeclaredMethod("c");
-					watcherSerializerObject =
-							getNMSClass("network.syncher", "DataWatcherSerializer").getDeclaredMethod("a", int.class);
-				}
-
-				/* Networking */
-
-				playerConnection = getField(getNMSClass("server.level", "EntityPlayer"), mappings.getPlayerConnection());
-				sendPacket = getNMSClass("server.network", "PlayerConnection").getMethod(mappings.getSendPacket(),
-						getNMSClass("network.protocol", "Packet"));
-				networkManager =
-						getInheritedField(getNMSClass("server.network", "PlayerConnection"), mappings.getNetworkManager());
-				channelField = getField(getNMSClass("network", "NetworkManager"), mappings.getChannel());
-
-				if (version > 19 || (version == 19 && versionMinor >= 4)) {
-					packetBundle = getNMSClass("network.protocol.game", "ClientboundBundlePacket");
-					packetBundlePackets =
-							packetBundle.getMethod(version > 20 || (version == 20 && versionMinor >= 5) ? "b" : "a");
-				}
-
-				/* Metadata */
-
-				packetMetadata = getNMSClass("network.protocol.game", "PacketPlayOutEntityMetadata");
-				packetMetadataEntity = getField(packetMetadata, mappings.getMetadataEntity());
-				packetMetadataItems = getField(packetMetadata, mappings.getMetadataItems());
-				if (version < 19 || (version == 19 && versionMinor < 3)) {
-					packetMetadataConstructor =
-							packetMetadata.getDeclaredConstructor(int.class, dataWatcherClass, boolean.class);
-				} else {
-					packetMetadataConstructor = packetMetadata.getDeclaredConstructor(int.class, List.class);
-				}
-
-				/* Teams */
-
-				Class<?> scoreboardClass = getNMSClass("world.scores", "Scoreboard");
-				Class<?> teamClass = getNMSClass("world.scores", "ScoreboardTeam");
-				Class<?> pushClass = getNMSClass("world.scores", "ScoreboardTeamBase$EnumTeamPush");
-				Class<?> chatFormatClass = getNMSClass("EnumChatFormat");
-
-				createTeamPacket = getNMSClass("network.protocol.game", "PacketPlayOutScoreboardTeam")
-						.getDeclaredConstructor(String.class, int.class, Optional.class, Collection.class);
-				createTeamPacket.setAccessible(true);
-				createTeamPacketData = getNMSClass("network.protocol.game", "PacketPlayOutScoreboardTeam$b")
-						.getDeclaredConstructor(teamClass);
-				createTeam = teamClass.getDeclaredConstructor(scoreboardClass, String.class);
-				scoreboardDummy = scoreboardClass.getDeclaredConstructor().newInstance();
-				pushNever = pushClass.getDeclaredField("b").get(null);
-				setTeamPush = teamClass.getDeclaredMethod(mappings.getTeamSetCollision(), pushClass);
-				setTeamColor = teamClass.getDeclaredMethod(mappings.getTeamSetColor(), chatFormatClass);
-				getColorConstant = chatFormatClass.getDeclaredMethod("a", char.class);
-
-				/* Entities */
-
-				Class<?> shulkerClass = getNMSClass("world.entity.monster", "EntityShulker");
-				for (Field field : entityTypesClass.getDeclaredFields()) {
-					if (field.getType() != entityTypesClass)
-						continue;
-
-					ParameterizedType fieldType = (ParameterizedType) field.getGenericType();
-					if (fieldType.getActualTypeArguments()[0] == shulkerClass) {
-						shulkerEntityType = field.get(null);
-						break;
-					}
-				}
-				if (shulkerEntityType == null)
-					throw new IllegalStateException();
-
-				Class<?> vec3dClass = getNMSClass("world.phys", "Vec3D");
-				vec3dZero = vec3dClass.getConstructor(double.class, double.class, double.class).newInstance(0d, 0d, 0d);
-
-
-				// arg10 was added after version 1.18.2
-				if (version >= 19) {
-					packetAddEntity = getNMSClass("network.protocol.game", "PacketPlayOutSpawnEntity")
-							.getDeclaredConstructor(int.class, UUID.class, double.class, double.class, double.class, float.class,
-									float.class, entityTypesClass, int.class, vec3dClass, double.class);
-				} else {
-					packetAddEntity = getNMSClass("network.protocol.game", "PacketPlayOutSpawnEntity")
-							.getDeclaredConstructor(int.class, UUID.class, double.class, double.class, double.class, float.class,
-									float.class, entityTypesClass, int.class, vec3dClass);
-				}
-
-
-				packetRemove = getNMSClass("network.protocol.game", "PacketPlayOutEntityDestroy")
-						.getDeclaredConstructor(version == 17 && versionMinor == 0 ? int.class : int[].class);
-
-				enabled = true;
+				isEnabled = true;
 			} catch (Exception ex) {
+				initializationError = ex;
+
 				String errorMsg =
 						"Glowing Entities reflection failed to initialize. The util is disabled. Please ensure your version ("
-								+ Bukkit.getServer().getClass().getPackage().getName() + ") is supported.";
+								+ Bukkit.getBukkitVersion() + ") is supported.";
 				if (logger == null) {
 					ex.printStackTrace();
 					System.err.println(errorMsg);
@@ -521,6 +434,137 @@ public class GlowingEntities implements Listener {
 					logger.log(Level.SEVERE, errorMsg, ex);
 				}
 			}
+		}
+
+		protected static void loadReflection(@NotNull ReflectionAccessor reflection, @NotNull Version version)
+				throws ReflectiveOperationException {
+			/* Global variables */
+
+			var entityClass = getNMSClass(reflection, "world.entity", "Entity");
+			var entityTypesClass = getNMSClass(reflection, "world.entity", "EntityType");
+			Object markerEntity = getNMSClass(reflection, "world.entity", "Marker")
+					.getConstructor(entityTypesClass, getNMSClass(reflection, "world.level", "Level"))
+					.newInstance(entityTypesClass.getField("MARKER").get(null), null);
+
+			getHandle = cpack == null ? null : getCraftClass("entity", "CraftEntity").getDeclaredMethod("getHandle");
+			getDataWatcher = entityClass.getMethodInstance("getEntityData");
+
+			/* Synched datas */
+
+			ClassAccessor dataWatcherClass = getNMSClass(reflection, "network.syncher", "SynchedEntityData");
+
+			if (version.isAfter(1, 20, 5)) {
+				ClassAccessor dataWatcherBuilderClass =
+						getNMSClass(reflection, "network.syncher", "SynchedEntityData$Builder");
+				var watcherBuilder = dataWatcherBuilderClass
+						.getConstructor(getNMSClass(reflection, "network.syncher", "SyncedDataHolder"))
+						.newInstance(markerEntity);
+				FieldAccessor watcherBuilderItems = dataWatcherBuilderClass.getField("itemsById");
+				watcherBuilderItems.set(watcherBuilder,
+						Array.newInstance(
+								getNMSClass(reflection, "network.syncher", "SynchedEntityData$DataItem").getClassInstance(),
+								0));
+				watcherDummy = dataWatcherBuilderClass.getMethod("build").invoke(watcherBuilder);
+			} else {
+				watcherDummy = dataWatcherClass.getConstructor(entityClass).newInstance(markerEntity);
+			}
+
+			ClassAccessor entityDataAccessorClass = getNMSClass(reflection, "network.syncher", "EntityDataAccessor");
+			watcherObjectFlags = entityClass.getField("DATA_SHARED_FLAGS_ID").get(null);
+			watcherGet = dataWatcherClass.getMethodInstance("get", entityDataAccessorClass);
+
+			if (!version.isAfter(1, 19, 3)) {
+				ClassAccessor watcherItemClass = getNMSClass(reflection, "network.syncher", "SynchedEntityData$DataItem");
+				watcherItemConstructor =
+						watcherItemClass.getConstructorInstance(entityDataAccessorClass, Object.class);
+				watcherItemObject = watcherItemClass.getMethodInstance("getAccessor");
+				watcherItemDataGet = watcherItemClass.getMethodInstance("getValue");
+			} else {
+				ClassAccessor watcherValueClass = getNMSClass(reflection, "network.syncher", "SynchedEntityData$DataValue");
+				watcherBCreator =
+						watcherValueClass.getMethodInstance("create", entityDataAccessorClass, Object.class);
+				watcherBId = watcherValueClass.getMethodInstance("id");
+				watcherBSerializer = watcherValueClass.getMethodInstance("serializer");
+				watcherItemDataGet = watcherValueClass.getMethodInstance("value");
+				watcherSerializerObject = getNMSClass(reflection, "network.syncher", "EntityDataSerializer")
+						.getMethodInstance("createAccessor", int.class);
+			}
+
+			/* Networking */
+
+			playerConnection = getNMSClass(reflection, "server.level", "ServerPlayer").getFieldInstance("connection");
+			ClassAccessor packetListenerClass =
+					getNMSClass(reflection, "server.network", version.isAfter(1, 20, 2)
+							? "ServerCommonPacketListenerImpl"
+							: "ServerGamePacketListenerImpl");
+
+			sendPacket =
+					packetListenerClass.getMethodInstance("send", getNMSClass(reflection, "network.protocol", "Packet"));
+			networkManager = packetListenerClass.getFieldInstance("connection");
+			channelField = getNMSClass(reflection, "network", "Connection").getFieldInstance("channel");
+
+			if (version.isAfter(1, 19, 4)) {
+				packetBundle = getNMSClass(reflection, "network.protocol", "BundlePacket");
+				packetBundlePackets = packetBundle.getMethodInstance("subPackets");
+			}
+
+			/* Metadata */
+
+			packetMetadata = getNMSClass(reflection, "network.protocol.game", "ClientboundSetEntityDataPacket");
+			packetMetadataEntity = packetMetadata.getFieldInstance("id");
+			packetMetadataItems = packetMetadata.getFieldInstance("packedItems");
+			if (version.isAfter(1, 19, 3)) {
+				packetMetadataConstructor = packetMetadata.getConstructorInstance(int.class, List.class);
+			} else {
+				packetMetadataConstructor =
+						packetMetadata.getConstructorInstance(int.class, dataWatcherClass, boolean.class);
+			}
+
+			/* Teams */
+
+			ClassAccessor scoreboardClass = getNMSClass(reflection, "world.scores", "Scoreboard");
+			ClassAccessor teamClass = getNMSClass(reflection, "world.scores", "PlayerTeam");
+			ClassAccessor pushClass = getNMSClass(reflection, "world.scores", "Team$CollisionRule");
+			ClassAccessor chatFormatClass = getNMSClass(reflection, "ChatFormatting");
+
+			createTeamPacket = getNMSClass(reflection, "network.protocol.game", "ClientboundSetPlayerTeamPacket")
+					.getConstructorInstance(String.class, int.class, Optional.class, Collection.class);
+			createTeamPacketData =
+					getNMSClass(reflection, "network.protocol.game", "ClientboundSetPlayerTeamPacket$Parameters")
+							.getConstructorInstance(teamClass);
+			createTeam = teamClass.getConstructorInstance(scoreboardClass, String.class);
+			scoreboardDummy = scoreboardClass.getConstructor().newInstance();
+			pushNever = pushClass.getField("NEVER").get(null);
+			setTeamPush = teamClass.getMethodInstance("setCollisionRule", pushClass);
+			setTeamColor = teamClass.getMethodInstance("setColor", chatFormatClass);
+			getColorConstant = chatFormatClass.getMethodInstance("getByCode", char.class);
+
+			/* Entities */
+
+			shulkerEntityType = entityTypesClass.getField("SHULKER").get(null);
+
+			ClassAccessor vec3dClass = getNMSClass(reflection, "world.phys", "Vec3");
+			vec3dZero = vec3dClass.getConstructor(double.class, double.class, double.class).newInstance(0d, 0d, 0d);
+
+
+			// arg10 was added after version 1.18.2
+			ClassAccessor addEntityPacketClass =
+					getNMSClass(reflection, "network.protocol.game", "ClientboundAddEntityPacket");
+			if (version.isAfter(1, 19, 0)) {
+				packetAddEntity = addEntityPacketClass.getConstructorInstance(int.class, UUID.class, double.class,
+						double.class, double.class, float.class, float.class, entityTypesClass, int.class, vec3dClass,
+						double.class);
+			} else {
+				packetAddEntity = addEntityPacketClass.getConstructorInstance(int.class, UUID.class, double.class,
+						double.class, double.class, float.class, float.class, entityTypesClass, int.class, vec3dClass);
+			}
+
+
+			packetRemove = version.is(1, 17, 0)
+					? getNMSClass(reflection, "network.protocol.game", "ClientboundRemoveEntityPacket")
+							.getConstructorInstance(int.class)
+					: getNMSClass(reflection, "network.protocol.game", "ClientboundRemoveEntitiesPacket")
+							.getConstructorInstance(int[].class);
 		}
 
 		public static void sendPackets(Player p, Object... packets) throws ReflectiveOperationException {
@@ -568,7 +612,6 @@ public class GlowingEntities implements Listener {
 				removeGlowing(glowingData);
 		}
 
-		@SuppressWarnings("squid:S3011")
 		public static void setMetadata(Player player, int entityId, byte flags, boolean ignore)
 				throws ReflectiveOperationException {
 			List<Object> dataItems = new ArrayList<>(1);
@@ -576,7 +619,7 @@ public class GlowingEntities implements Listener {
 					: watcherBCreator.invoke(null, watcherObjectFlags, flags));
 
 			Object packetMetadata;
-			if (version < 19 || (version == 19 && versionMinor < 3)) {
+			if (version.isBefore(1, 19, 3)) {
 				packetMetadata = packetMetadataConstructor.newInstance(entityId, watcherDummy, false);
 				packetMetadataItems.set(packetMetadata, dataItems);
 			} else {
@@ -621,7 +664,7 @@ public class GlowingEntities implements Listener {
 		public static void createEntity(Player player, int entityId, UUID entityUuid, Object entityType, Location location)
 				throws IllegalArgumentException, ReflectiveOperationException {
 			Object packet;
-			if (version >= 19) {
+			if (version.isAfter(1, 19, 0)) {
 				packet = packetAddEntity.newInstance(entityId, entityUuid, location.getX(), location.getY(),
 						location.getZ(), location.getPitch(), location.getYaw(), entityType, 0, vec3dZero, 0d);
 			} else {
@@ -633,7 +676,7 @@ public class GlowingEntities implements Listener {
 
 		public static void removeEntities(Player player, int... entitiesId) throws ReflectiveOperationException {
 			Object[] packets;
-			if (version == 17 && versionMinor == 0) {
+			if (version.is(1, 17, 0)) {
 				packets = new Object[entitiesId.length];
 				for (int i = 0; i < entitiesId.length; i++) {
 					packets[i] = packetRemove.newInstance(entitiesId[i]);
@@ -653,11 +696,12 @@ public class GlowingEntities implements Listener {
 			playerData.packetsHandler = new ChannelDuplexHandler() {
 				@Override
 				public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
-					if (msg.getClass().equals(packetMetadata) && packets.asMap().remove(msg) == null) {
+					if (msg.getClass().equals(packetMetadata.getClassInstance()) && packets.asMap().remove(msg) == null) {
 						int entityID = packetMetadataEntity.getInt(msg);
 						GlowingData glowingData = playerData.glowingDatas.get(entityID);
 						if (glowingData != null) {
 
+							@SuppressWarnings("unchecked")
 							List<Object> items = (List<Object>) packetMetadataItems.get(msg);
 							if (items != null) {
 
@@ -715,7 +759,7 @@ public class GlowingEntities implements Listener {
 									// glowing color will be able to see it. We should send a new packet to the viewer only.
 
 									Object newMsg;
-									if (version < 19 || (version == 19 && versionMinor < 3)) {
+									if (version.isBefore(1, 19, 3)) {
 										newMsg = packetMetadataConstructor.newInstance(entityID, watcherDummy, false);
 										packetMetadataItems.set(newMsg, items);
 									} else {
@@ -728,7 +772,7 @@ public class GlowingEntities implements Listener {
 								}
 							}
 						}
-					} else if (packetBundle != null && msg.getClass().equals(packetBundle)) {
+					} else if (packetBundle != null && packetBundle.getClassInstance().isInstance(msg)) {
 						handlePacketBundle(msg);
 					}
 					super.write(ctx, msg, promise);
@@ -773,42 +817,18 @@ public class GlowingEntities implements Listener {
 		}
 
 		/* Reflection utils */
-		@Deprecated
-		private static Object getField(Class<?> clazz, String name, Object instance) throws ReflectiveOperationException {
-			return getField(clazz, name).get(instance);
-		}
-
-		private static Field getField(Class<?> clazz, String name) throws ReflectiveOperationException {
-			Field field = clazz.getDeclaredField(name);
-			field.setAccessible(true);
-			return field;
-		}
-
-		private static Field getInheritedField(Class<?> clazz, String name) throws ReflectiveOperationException {
-			Class<?> superclass = clazz;
-			do {
-				try {
-					Field field = superclass.getDeclaredField(name);
-					field.setAccessible(true);
-					return field;
-				} catch (NoSuchFieldException ex) {
-				}
-			} while ((superclass = clazz.getSuperclass()) != null);
-
-			// if we are here this means the field is not in superclasses
-			throw new NoSuchFieldException(name);
-		}
-
 		private static Class<?> getCraftClass(String craftPackage, String className) throws ClassNotFoundException {
 			return Class.forName(cpack + craftPackage + "." + className);
 		}
 
-		private static Class<?> getNMSClass(String className) throws ClassNotFoundException {
-			return Class.forName("net.minecraft." + className);
+		private static @NotNull ClassAccessor getNMSClass(@NotNull ReflectionAccessor reflection, @NotNull String className)
+				throws ClassNotFoundException {
+			return reflection.getClass("net.minecraft." + className);
 		}
 
-		private static Class<?> getNMSClass(String nmPackage, String className) throws ClassNotFoundException {
-			return Class.forName("net.minecraft." + nmPackage + "." + className);
+		private static @NotNull ClassAccessor getNMSClass(@NotNull ReflectionAccessor reflection, @NotNull String nmPackage,
+				@NotNull String className) throws ClassNotFoundException {
+			return reflection.getClass("net.minecraft." + nmPackage + "." + className);
 		}
 
 		private static class TeamData {
@@ -848,341 +868,6 @@ public class GlowingEntities implements Listener {
 					removePackets.put(teamID, packet);
 				}
 				return packet;
-			}
-
-		}
-
-		private enum ProtocolMappings {
-
-			V1_17(
-					17,
-					0,
-					false,
-					"Z",
-					"Y",
-					"getDataWatcher",
-					"get",
-					"b",
-					"a",
-					"sendPacket",
-					"k",
-					"setCollisionRule",
-					"setColor",
-					"a",
-					"b"),
-			V1_18(
-					18,
-					0,
-					false,
-					"Z",
-					"Y",
-					"ai",
-					"a",
-					"b",
-					"a",
-					"a",
-					"m",
-					"a",
-					"a",
-					"a",
-					"b"),
-			V1_19(
-					19,
-					0,
-					false,
-					"Z",
-					"ab",
-					"ai",
-					null,
-					"b",
-					"b",
-					"a",
-					"m",
-					"a",
-					"a",
-					"a",
-					"b"),
-			V1_19_3(
-					19,
-					3,
-					false,
-					null,
-					null,
-					"al",
-					null,
-					null,
-					null,
-					null,
-					null,
-					null,
-					null,
-					"b",
-					"c"),
-			V1_19_4(
-					19,
-					4,
-					false,
-					"an",
-					null,
-					"aj",
-					null,
-					null,
-					"h",
-					null,
-					null,
-					null,
-					null,
-					null,
-					null),
-			V1_20(
-					20,
-					0,
-					false,
-					"an",
-					"am",
-					"aj",
-					"b",
-					"c",
-					"h",
-					"a",
-					"m",
-					"a",
-					"a",
-					"b",
-					"c"),
-			V1_20_2(
-					20,
-					2,
-					false,
-					"ao",
-					null,
-					"al",
-					null,
-					null,
-					"c",
-					"b",
-					"n",
-					null,
-					null,
-					null,
-					null),
-			V1_20_3(
-					20,
-					3,
-					false,
-					null,
-					"an",
-					"an",
-					null,
-					null,
-					null,
-					null,
-					null,
-					null,
-					null,
-					null,
-					null),
-			V1_20_5(
-					20,
-					5,
-					false,
-					"ap",
-					"aq",
-					"ap",
-					"a",
-					null,
-					"e",
-					null,
-					null,
-					null,
-					null,
-					"c",
-					"d"),
-			V1_20_5_REMAPPED(
-					20,
-					5,
-					true,
-					"DATA_SHARED_FLAGS_ID",
-					"MARKER",
-					"getEntityData",
-					"get",
-					"connection",
-					"connection",
-					"send",
-					"channel",
-					"setCollisionRule",
-					"setColor",
-					"id",
-					"packedItems"
-					),
-			// remapping not complete: should also use remapped class names
-			V1_21(
-					21,
-					0,
-					false,
-					null,
-					null,
-					"ar",
-					null,
-					null,
-					null,
-					null,
-					null,
-					null,
-					null,
-					null,
-					null
-					)
-			;
-
-			private final int major, minor;
-			private final boolean remapped;
-			private String watcherFlags;
-			private String markerTypeId;
-			private String watcherAccessor;
-			private String watcherGet;
-			private String playerConnection;
-			private String networkManager;
-			private String sendPacket;
-			private String channel;
-			private String teamSetCollsion;
-			private String teamSetColor;
-			private String metadataEntity;
-			private String metadataItems;
-
-			private ProtocolMappings(int major, int minor, boolean remapped,
-					String watcherFlags, String markerTypeId, String watcherAccessor, String watcherGet,
-					String playerConnection, String networkManager, String sendPacket, String channel,
-					String teamSetCollsion, String teamSetColor, String metdatataEntity, String metadataItems) {
-				this.major = major;
-				this.minor = minor;
-				this.remapped = remapped;
-				this.watcherFlags = watcherFlags;
-				this.markerTypeId = markerTypeId;
-				this.watcherAccessor = watcherAccessor;
-				this.watcherGet = watcherGet;
-				this.playerConnection = playerConnection;
-				this.networkManager = networkManager;
-				this.sendPacket = sendPacket;
-				this.channel = channel;
-				this.teamSetCollsion = teamSetCollsion;
-				this.teamSetColor = teamSetColor;
-				this.metadataEntity = metdatataEntity;
-				this.metadataItems = metadataItems;
-			}
-
-			public int getMajor() {
-				return major;
-			}
-
-			public int getMinor() {
-				return minor;
-			}
-
-			public boolean isRemapped() {
-				return remapped;
-			}
-
-			public String getWatcherFlags() {
-				return watcherFlags;
-			}
-
-			public String getMarkerTypeId() {
-				return markerTypeId;
-			}
-
-			public String getWatcherAccessor() {
-				return watcherAccessor;
-			}
-
-			public String getWatcherGet() {
-				return watcherGet;
-			}
-
-			public String getPlayerConnection() {
-				return playerConnection;
-			}
-
-			public String getNetworkManager() {
-				return networkManager;
-			}
-
-			public String getSendPacket() {
-				return sendPacket;
-			}
-
-			public String getChannel() {
-				return channel;
-			}
-
-			public String getTeamSetCollision() {
-				return teamSetCollsion;
-			}
-
-			public String getTeamSetColor() {
-				return teamSetColor;
-			}
-
-			public String getMetadataEntity() {
-				return metadataEntity;
-			}
-
-			public String getMetadataItems() {
-				return metadataItems;
-			}
-
-			static {
-				try {
-					fillAll();
-				} catch (ReflectiveOperationException ex) {
-					logger.severe("Failed to fill up all datas for mappings.");
-					ex.printStackTrace();
-				}
-			}
-
-			private static void fillAll() throws ReflectiveOperationException {
-				ProtocolMappings lastUnmapped = V1_17;
-				ProtocolMappings lastRemapped = V1_20_5_REMAPPED;
-				// /!\ we start at 1
-				for (int i = 1; i < ProtocolMappings.values().length; i++) {
-					ProtocolMappings map = ProtocolMappings.values()[i];
-					for (Field field : ProtocolMappings.class.getDeclaredFields()) {
-						if (field.getType() == String.class && field.get(map) == null) {
-							field.set(map, field.get(map.isRemapped() ? lastRemapped : lastUnmapped));
-						}
-					}
-					if (map.isRemapped())
-						lastRemapped = map;
-					else
-						lastUnmapped = map;
-				}
-			}
-
-			public static ProtocolMappings getMappings(int major, int minor, boolean remapped) {
-				ProtocolMappings lastGood = null;
-				for (ProtocolMappings map : values()) {
-					if (map.isRemapped() != remapped)
-						continue;
-
-					// loop in ascending version order
-					if (major == map.getMajor()) {
-						if (minor == map.getMinor())
-							return map; // perfect match
-
-						if (minor > map.getMinor())
-							lastGood = map; // looking for newer minor version
-
-						if (minor < map.getMinor())
-							return lastGood; // looking for older minor version: we get the last correct one
-					}
-				}
-				// will return either null if no mappings matched the major => fallback to latest major with a
-				// warning, either the last mappings with same major and smaller minor
-				return lastGood;
-			}
-
-			public static ProtocolMappings getLast(boolean remapped) {
-				return Arrays.stream(values()).filter(map -> map.isRemapped() == remapped).reduce((l, r) -> r).get();
 			}
 
 		}

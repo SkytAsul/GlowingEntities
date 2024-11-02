@@ -11,11 +11,6 @@ No ProtocolLib, no dependency, compatible from Minecraft 1.17 to 1.21!
 ![Glowing blocks animation](demo-blocks.gif)
 
 ## How to install?
-### 1st method: copying the class
-Copy the [GlowingEntities.java class](src/main/java/fr/skytasul/glowingentities/GlowingEntities.java) to your project
-(and the [GlowingBlocks.java class](src/main/java/fr/skytasul/glowingentities/GlowingBlocks.java) if required).
-
-### 2nd method: using maven
 Add this requirement to your maven `pom.xml` file:
 
 ```xml
@@ -26,7 +21,7 @@ Add this requirement to your maven `pom.xml` file:
   <scope>compile</scope>
 </dependency>
 ```
-Additionnally, you can use the maven shade plugin to relocate the classes location.
+Then, configure the maven shade plugin to relocate the classes location. You can also use the Spigot library resolver to download the library, or Paper's plugin loader.
 
 > [!NOTE]  
 > Until 1.3.4, the util was under the groupId `io.github.skytasul`.  

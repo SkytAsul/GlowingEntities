@@ -3,3 +3,5 @@
 /.settings
 .classpath
 .project
+/rawMappings
+/dependency-reduced-pom.xml
