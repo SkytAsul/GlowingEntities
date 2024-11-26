@@ -440,11 +440,16 @@ public class GlowingEntities implements Listener {
 				throws ReflectiveOperationException {
 			/* Global variables */
 
+			var bukkitWorld = Bukkit.getWorlds().get(0);
+			var worldHandle = reflection.getClass(bukkitWorld.getClass().getName())
+					.getMethod("getHandle")
+					.invoke(bukkitWorld);
+
 			var entityClass = getNMSClass(reflection, "world.entity", "Entity");
 			var entityTypesClass = getNMSClass(reflection, "world.entity", "EntityType");
 			Object markerEntity = getNMSClass(reflection, "world.entity", "Marker")
 					.getConstructor(entityTypesClass, getNMSClass(reflection, "world.level", "Level"))
-					.newInstance(entityTypesClass.getField("MARKER").get(null), null);
+					.newInstance(entityTypesClass.getField("MARKER").get(null), worldHandle);
 
 			getHandle = cpack == null ? null : getCraftClass("entity", "CraftEntity").getDeclaredMethod("getHandle");
 			getDataWatcher = entityClass.getMethodInstance("getEntityData");
