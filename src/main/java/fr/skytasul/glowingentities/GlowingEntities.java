@@ -442,9 +442,13 @@ public class GlowingEntities implements Listener {
 
 			var entityClass = getNMSClass(reflection, "world.entity", "Entity");
 			var entityTypesClass = getNMSClass(reflection, "world.entity", "EntityType");
+
+			var worldInstance = version.isAfter(1, 21, 3) && cpack != null
+					? getCraftClass("", "CraftWorld").getDeclaredMethod("getHandle").invoke(Bukkit.getWorlds().get(0))
+					: null;
 			Object markerEntity = getNMSClass(reflection, "world.entity", "Marker")
 					.getConstructor(entityTypesClass, getNMSClass(reflection, "world.level", "Level"))
-					.newInstance(entityTypesClass.getField("MARKER").get(null), null);
+					.newInstance(entityTypesClass.getField("MARKER").get(null), worldInstance);
 
 			getHandle = cpack == null ? null : getCraftClass("entity", "CraftEntity").getDeclaredMethod("getHandle");
 			getDataWatcher = entityClass.getMethodInstance("getEntityData");
@@ -818,7 +822,7 @@ public class GlowingEntities implements Listener {
 
 		/* Reflection utils */
 		private static Class<?> getCraftClass(String craftPackage, String className) throws ClassNotFoundException {
-			return Class.forName(cpack + craftPackage + "." + className);
+			return Class.forName(cpack + (craftPackage.isBlank() ? "" : craftPackage + ".") + className);
 		}
 
 		private static @NotNull ClassAccessor getNMSClass(@NotNull ReflectionAccessor reflection, @NotNull String className)
