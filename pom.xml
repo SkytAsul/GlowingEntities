@@ -5,7 +5,7 @@
 
 	<groupId>fr.skytasul</groupId>
 	<artifactId>glowingentities</artifactId>
-	<version>1.4</version>
+	<version>1.4.1</version>
 
 	<name>GlowingEntities</name>
 	<description>A Spigot util to easily make entities glow.</description>
