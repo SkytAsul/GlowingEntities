@@ -388,7 +388,7 @@ net.minecraft.world.scores.Team$CollisionRule -> net.minecraft.world.scores.Scor
     NEVER -> b
 net.minecraft.server.network.ServerGamePacketListenerImpl -> net.minecraft.server.network.PlayerConnection:
     connection -> a
-    send(net.minecraft.network.protocol.Packet) -> a
+    send(net.minecraft.network.protocol.Packet) -> sendPacket
 net.minecraft.network.syncher.SynchedEntityData$DataItem -> net.minecraft.network.syncher.DataWatcher$Item:
     getAccessor() -> a
     getValue() -> b
@@ -551,7 +551,7 @@ net.minecraft.world.scores.Team$CollisionRule -> net.minecraft.world.scores.Scor
     NEVER -> b
 net.minecraft.server.network.ServerGamePacketListenerImpl -> net.minecraft.server.network.PlayerConnection:
     connection -> a
-    send(net.minecraft.network.protocol.Packet) -> a
+    send(net.minecraft.network.protocol.Packet) -> sendPacket
 net.minecraft.network.syncher.SynchedEntityData$DataItem -> net.minecraft.network.syncher.DataWatcher$Item:
     getAccessor() -> a
     getValue() -> b

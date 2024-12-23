@@ -2,6 +2,7 @@ package fr.skytasul.glowingentities;
 
 import fr.skytasul.reflection.Version;
 import fr.skytasul.reflection.mappings.files.ProguardMapping;
+import fr.skytasul.reflection.shrieker.CustomMappings;
 import fr.skytasul.reflection.shrieker.MappingsShrieker;
 import fr.skytasul.reflection.shrieker.PipeMappings;
 import fr.skytasul.reflection.shrieker.minecraft.MinecraftMappingsProvider;
@@ -35,7 +36,9 @@ public class GlowingEntitiesMappingsGenerator {
 			try {
 				LOGGER.info("Downloading mappings for " + version + "...");
 				var minecraftMappings = mappingsProvider.loadMinecraftMappings(version);
-				var spigotMappings = mappingsProvider.loadSpigotMappings(version);
+				var spigotMappings = new CustomMappings(mappingsProvider.loadSpigotMappings(version));
+				spigotMappings.getClassFromMapped("net.minecraft.server.network.PlayerConnection").inheritsFrom(
+						spigotMappings.getClassFromMapped("net.minecraft.server.network.ServerPlayerConnection"));
 				LOGGER.info("Shrieking mappings...");
 				spigotShrieker.registerVersionMappings(version, new PipeMappings(minecraftMappings, spigotMappings));
 			} catch (ReflectiveOperationException ex) {
