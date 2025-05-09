@@ -38,7 +38,7 @@ import java.util.logging.Logger;
  * <p>
  * <b>1.17 -> 1.21</b>
  *
- * @version 1.4.2
+ * @version 1.4.4
  * @author SkytAsul
  */
 public class GlowingEntities implements Listener {
