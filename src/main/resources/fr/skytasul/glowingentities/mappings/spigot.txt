@@ -1,24 +1,25 @@
 # reflection-remapper | AVAILABLE VERSIONS
-# reflection-remapper | 1.21.0 22-70
-# reflection-remapper | 1.21.1 71-119
-# reflection-remapper | 1.19.0 120-157
-# reflection-remapper | 1.20.1 158-201
-# reflection-remapper | 1.18.0 202-239
-# reflection-remapper | 1.19.1 240-277
-# reflection-remapper | 1.20.2 278-321
-# reflection-remapper | 1.21.3 322-370
-# reflection-remapper | 1.17.0 371-408
-# reflection-remapper | 1.18.1 409-446
-# reflection-remapper | 1.19.2 447-484
-# reflection-remapper | 1.21.4 485-533
-# reflection-remapper | 1.17.1 534-571
-# reflection-remapper | 1.18.2 572-609
-# reflection-remapper | 1.19.3 610-651
-# reflection-remapper | 1.20.4 652-695
-# reflection-remapper | 1.21.5 696-744
-# reflection-remapper | 1.19.4 745-788
-# reflection-remapper | 1.21.6 789-837
-# reflection-remapper | 1.20.6 838-886
+# reflection-remapper | 1.17.0 23-60
+# reflection-remapper | 1.17.1 61-98
+# reflection-remapper | 1.18.0 99-136
+# reflection-remapper | 1.18.1 137-174
+# reflection-remapper | 1.18.2 175-212
+# reflection-remapper | 1.19.0 213-250
+# reflection-remapper | 1.19.1 251-288
+# reflection-remapper | 1.19.2 289-326
+# reflection-remapper | 1.19.3 327-368
+# reflection-remapper | 1.19.4 369-412
+# reflection-remapper | 1.20.1 413-456
+# reflection-remapper | 1.20.2 457-500
+# reflection-remapper | 1.20.4 501-544
+# reflection-remapper | 1.20.6 545-593
+# reflection-remapper | 1.21.0 594-642
+# reflection-remapper | 1.21.1 643-691
+# reflection-remapper | 1.21.3 692-740
+# reflection-remapper | 1.21.4 741-789
+# reflection-remapper | 1.21.5 790-838
+# reflection-remapper | 1.21.6 839-887
+# reflection-remapper | 1.21.7 888-936
 # reflection-remapper | AVAILABLE VERSIONS
 net.minecraft.world.entity.EntityType -> net.minecraft.world.entity.EntityTypes:
     MARKER -> aq
@@ -877,6 +878,55 @@ net.minecraft.network.syncher.SynchedEntityData$DataItem -> net.minecraft.networ
 net.minecraft.world.entity.Entity -> net.minecraft.world.entity.Entity:
     DATA_SHARED_FLAGS_ID -> ap
     getEntityData() -> ap
+net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket -> net.minecraft.network.protocol.game.PacketPlayOutEntityMetadata:
+    id -> c
+    packedItems -> d
+net.minecraft.world.phys.Vec3 -> net.minecraft.world.phys.Vec3D:
+net.minecraft.world.entity.Marker -> net.minecraft.world.entity.Marker:
+net.minecraft.network.protocol.Packet -> net.minecraft.network.protocol.Packet:
+net.minecraft.world.level.Level -> net.minecraft.world.level.World:
+net.minecraft.network.protocol.game.ClientboundSetPlayerTeamPacket$Parameters -> net.minecraft.network.protocol.game.PacketPlayOutScoreboardTeam$b:
+net.minecraft.world.entity.EntityType -> net.minecraft.world.entity.EntityTypes:
+    MARKER -> aE
+    SHULKER -> be
+net.minecraft.network.Connection -> net.minecraft.network.NetworkManager:
+    channel -> n
+net.minecraft.network.protocol.game.ClientboundSetPlayerTeamPacket -> net.minecraft.network.protocol.game.PacketPlayOutScoreboardTeam:
+net.minecraft.server.network.ServerCommonPacketListenerImpl -> net.minecraft.server.network.ServerCommonPacketListenerImpl:
+    connection -> e
+    send(net.minecraft.network.protocol.Packet) -> b
+net.minecraft.network.syncher.SynchedEntityData$DataValue -> net.minecraft.network.syncher.DataWatcher$c:
+    create(net.minecraft.network.syncher.EntityDataAccessor,java.lang.Object) -> a
+    id() -> a
+    serializer() -> b
+    value() -> c
+net.minecraft.server.level.ServerPlayer -> net.minecraft.server.level.EntityPlayer:
+    connection -> g
+net.minecraft.world.scores.Team$CollisionRule -> net.minecraft.world.scores.ScoreboardTeamBase$EnumTeamPush:
+    NEVER -> b
+net.minecraft.ChatFormatting -> net.minecraft.EnumChatFormat:
+    getByCode(char) -> a
+net.minecraft.network.syncher.EntityDataSerializer -> net.minecraft.network.syncher.DataWatcherSerializer:
+    createAccessor(int) -> a
+net.minecraft.network.syncher.SynchedEntityData$Builder -> net.minecraft.network.syncher.DataWatcher$a:
+    itemsById -> b
+    build() -> a
+net.minecraft.network.syncher.SyncedDataHolder -> net.minecraft.network.syncher.SyncedDataHolder:
+net.minecraft.network.protocol.game.ClientboundRemoveEntitiesPacket -> net.minecraft.network.protocol.game.PacketPlayOutEntityDestroy:
+net.minecraft.world.scores.PlayerTeam -> net.minecraft.world.scores.ScoreboardTeam:
+    setCollisionRule(net.minecraft.world.scores.Team$CollisionRule) -> a
+    setColor(net.minecraft.ChatFormatting) -> a
+net.minecraft.network.syncher.EntityDataAccessor -> net.minecraft.network.syncher.DataWatcherObject:
+net.minecraft.network.protocol.game.ClientboundAddEntityPacket -> net.minecraft.network.protocol.game.PacketPlayOutSpawnEntity:
+net.minecraft.network.protocol.BundlePacket -> net.minecraft.network.protocol.BundlePacket:
+    subPackets() -> b
+net.minecraft.network.syncher.SynchedEntityData -> net.minecraft.network.syncher.DataWatcher:
+    get(net.minecraft.network.syncher.EntityDataAccessor) -> a
+net.minecraft.world.scores.Scoreboard -> net.minecraft.world.scores.Scoreboard:
+net.minecraft.network.syncher.SynchedEntityData$DataItem -> net.minecraft.network.syncher.DataWatcher$Item:
+net.minecraft.world.entity.Entity -> net.minecraft.world.entity.Entity:
+    DATA_SHARED_FLAGS_ID -> az
+    getEntityData() -> au
 net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket -> net.minecraft.network.protocol.game.PacketPlayOutEntityMetadata:
     id -> c
     packedItems -> d
