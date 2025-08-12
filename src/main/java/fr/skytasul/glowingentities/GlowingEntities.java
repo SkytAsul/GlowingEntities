@@ -38,7 +38,7 @@ import java.util.logging.Logger;
  * <p>
  * <b>1.17 -> 1.21</b>
  *
- * @version 1.4.6
+ * @version 1.4.7
  * @author SkytAsul
  */
 public class GlowingEntities implements Listener {
@@ -402,7 +402,6 @@ public class GlowingEntities implements Listener {
 					var mappingsFile =
 							new String(GlowingEntities.class.getResourceAsStream("mappings/spigot.txt").readAllBytes());
 					var mappingsReader = new MappingFileReader(new ProguardMapping(false), mappingsFile.lines().toList());
-					mappingsReader.readAvailableVersions();
 					var foundVersion = mappingsReader.keepBestMatchedVersion(serverVersion);
 
 					if (foundVersion.isEmpty())
