@@ -34,11 +34,8 @@ import java.util.logging.LogRecord;
 import java.util.logging.Logger;
 
 /**
- * A Spigot util to easily make entities glow.
- * <p>
- * <b>1.17 -> 1.21</b>
+ * An util to easily make entities glow.
  *
- * @version 1.4.7
  * @author SkytAsul
  */
 public class GlowingEntities implements Listener {
