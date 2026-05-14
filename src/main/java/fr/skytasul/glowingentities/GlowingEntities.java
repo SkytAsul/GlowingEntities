@@ -39,10 +39,12 @@ import java.util.logging.Logger;
  *
  * @author SkytAsul
  */
+@SuppressWarnings("deprecation")
 public class GlowingEntities implements Listener {
 
 	protected final @NotNull Plugin plugin;
 	private Map<Player, PlayerData> glowing;
+	private Map<UUID, ChatColor> playerGlowColors;
 	boolean enabled = false;
 
 	private int uid;
@@ -71,6 +73,7 @@ public class GlowingEntities implements Listener {
 
 		plugin.getServer().getPluginManager().registerEvents(this, plugin);
 		glowing = new HashMap<>();
+		playerGlowColors = new HashMap<>();
 		uid = ThreadLocalRandom.current().nextInt(Integer.MAX_VALUE);
 		enabled = true;
 	}
@@ -95,6 +98,7 @@ public class GlowingEntities implements Listener {
 			}
 		});
 		glowing = null;
+		playerGlowColors = null;
 		uid = 0;
 		enabled = false;
 	}
@@ -107,6 +111,7 @@ public class GlowingEntities implements Listener {
 	@EventHandler
 	public void onQuit(PlayerQuitEvent event) {
 		glowing.remove(event.getPlayer());
+		playerGlowColors.remove(event.getPlayer().getUniqueId());
 	}
 
 	/**
@@ -131,6 +136,14 @@ public class GlowingEntities implements Listener {
 	public void setGlowing(Entity entity, Player receiver, ChatColor color) throws ReflectiveOperationException {
 		String teamID = entity instanceof Player ? entity.getName() : entity.getUniqueId().toString();
 		setGlowing(entity.getEntityId(), teamID, receiver, color, Packets.getEntityFlags(entity));
+
+		if (entity instanceof Player playerEntity) {
+			if (color == null) {
+				playerGlowColors.remove(playerEntity.getUniqueId());
+			} else {
+				playerGlowColors.put(playerEntity.getUniqueId(), color);
+			}
+		}
 	}
 
 	/**
@@ -219,6 +232,25 @@ public class GlowingEntities implements Listener {
 	 */
 	public void unsetGlowing(Entity entity, Player receiver) throws ReflectiveOperationException {
 		unsetGlowing(entity.getEntityId(), receiver);
+		if (entity instanceof Player playerEntity) {
+			playerGlowColors.remove(playerEntity.getUniqueId());
+		}
+	}
+
+	/**
+	 * Returns the PlaceholderAPI value for TAB fallback integration.
+	 * <p>
+	 * This matches the `%glowingentities_glowcolor%` placeholder output and returns a
+	 * legacy color code such as {@code &a}. If no color is currently tracked for this player,
+	 * an empty string is returned.
+	 *
+	 * @param player player to resolve
+	 * @return legacy color code with '&' prefix, or empty string
+	 */
+	public @NotNull String getGlowColorPlaceholder(@NotNull Player player) {
+		ensureEnabled();
+		ChatColor color = playerGlowColors.get(player.getUniqueId());
+		return color == null ? "" : "&" + color.getChar();
 	}
 
 	/**
@@ -791,7 +823,7 @@ public class GlowingEntities implements Listener {
 					for (Iterator iterator = subPackets.iterator(); iterator.hasNext();) {
 						Object packet = iterator.next();
 
-						if (packet.getClass().equals(packetMetadata)) {
+						if (packet.getClass().equals(packetMetadata.getClassInstance())) {
 							int entityID = packetMetadataEntity.getInt(packet);
 							GlowingData glowingData = playerData.glowingDatas.get(entityID);
 							if (glowingData != null) {

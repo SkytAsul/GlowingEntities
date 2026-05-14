@@ -50,3 +50,22 @@ The same as before but with the `GlowingBlocks` class :)
 
 > **Warning**
 > The `GlowingBlocks` util can only be used on Paper-based servers, not Bukkit or Spigot ones!
+
+## TAB compatibility fallback (PlaceholderAPI)
+If you use TAB and want a glow-color placeholder fallback, this library now provides `%glowingentities_glowcolor%`.
+
+1. Add `PlaceholderAPI` as a `softdepend` in your plugin.yml.
+2. Register the expansion when PlaceholderAPI is available:
+
+```java
+if (Bukkit.getPluginManager().isPluginEnabled("PlaceholderAPI")) {
+  new GlowingEntitiesPlaceholderExpansion(plugin, glowingEntities).register();
+}
+```
+
+3. Use `%glowingentities_color%` at the end of TAB `tagprefix` (as required by TAB):
+
+```yml
+_DEFAULT_:
+  tagprefix: 'YOURSTUFFHERE%glowingentities_color%'
+```

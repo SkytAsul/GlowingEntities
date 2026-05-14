@@ -26,6 +26,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  *
  * @author SkytAsul
  */
+@SuppressWarnings("deprecation")
 public class GlowingBlocks implements Listener {
 
 	private final @NotNull GlowingEntities entities;

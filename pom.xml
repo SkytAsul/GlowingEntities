@@ -24,6 +24,10 @@
 			<email>skytasul@gmail.com</email>
 			<url>https://skytasul.fr</url>
 		</developer>
+		<developer>
+			<name>NicDevTV</name>
+			<url>https://github.com/NicDevTV</url>
+		</developer>
 	</developers>
 
 	<scm>
@@ -43,6 +47,10 @@
 		<repository>
 			<id>papermc</id>
 			<url>https://repo.papermc.io/repository/maven-public/</url>
+		</repository>
+		<repository>
+			<id>placeholderapi</id>
+			<url>https://repo.extendedclip.com/content/repositories/placeholderapi/</url>
 		</repository>
 	</repositories>
 
@@ -81,6 +89,13 @@
 			<groupId>org.jetbrains</groupId>
 			<artifactId>annotations</artifactId>
 			<version>24.0.0</version>
+			<scope>provided</scope>
+		</dependency>
+
+		<dependency>
+			<groupId>me.clip</groupId>
+			<artifactId>placeholderapi</artifactId>
+			<version>2.11.6</version>
 			<scope>provided</scope>
 		</dependency>
 	</dependencies>
