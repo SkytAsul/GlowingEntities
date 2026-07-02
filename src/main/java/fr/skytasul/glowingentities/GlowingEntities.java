@@ -449,9 +449,10 @@ public class GlowingEntities implements Listener {
 			var worldInstance = version.isAfter(1, 21, 3) && cpack != null
 					? getCraftClass("", "CraftWorld").getDeclaredMethod("getHandle").invoke(Bukkit.getWorlds().get(0))
 					: null;
+			Object markerEntityType = getEntityType(reflection, version, entityTypesClass, "MARKER", "marker");
 			Object markerEntity = getNMSClass(reflection, "world.entity", "Marker")
 					.getConstructor(entityTypesClass, getNMSClass(reflection, "world.level", "Level"))
-					.newInstance(entityTypesClass.getField("MARKER").get(null), worldInstance);
+					.newInstance(markerEntityType, worldInstance);
 
 			getHandle = cpack == null ? null : getCraftClass("entity", "CraftEntity").getDeclaredMethod("getHandle");
 			getDataWatcher = entityClass.getMethodInstance("getEntityData");
@@ -532,7 +533,9 @@ public class GlowingEntities implements Listener {
 			ClassAccessor scoreboardClass = getNMSClass(reflection, "world.scores", "Scoreboard");
 			ClassAccessor teamClass = getNMSClass(reflection, "world.scores", "PlayerTeam");
 			ClassAccessor pushClass = getNMSClass(reflection, "world.scores", "Team$CollisionRule");
-			ClassAccessor chatFormatClass = getNMSClass(reflection, "ChatFormatting");
+			ClassAccessor colorClass = version.isAfter(26, 2, 0)
+					? getNMSClass(reflection, "world.scores", "TeamColor")
+					: getNMSClass(reflection, "ChatFormatting");
 
 			createTeamPacket = getNMSClass(reflection, "network.protocol.game", "ClientboundSetPlayerTeamPacket")
 					.getConstructorInstance(String.class, int.class, Optional.class, Collection.class);
@@ -543,12 +546,18 @@ public class GlowingEntities implements Listener {
 			scoreboardDummy = scoreboardClass.getConstructor().newInstance();
 			pushNever = pushClass.getField("NEVER").get(null);
 			setTeamPush = teamClass.getMethodInstance("setCollisionRule", pushClass);
-			setTeamColor = teamClass.getMethodInstance("setColor", chatFormatClass);
-			getColorConstant = chatFormatClass.getMethodInstance("getByCode", char.class);
+
+			if (version.isAfter(26, 2, 0)) {
+				setTeamColor = teamClass.getMethodInstance("setColor", Optional.class);
+				getColorConstant = colorClass.getMethodInstance("byName", String.class);
+			} else {
+				setTeamColor = teamClass.getMethodInstance("setColor", colorClass);
+				getColorConstant = colorClass.getMethodInstance("getByCode", char.class);
+			}
 
 			/* Entities */
 
-			shulkerEntityType = entityTypesClass.getField("SHULKER").get(null);
+			shulkerEntityType = getEntityType(reflection, version, entityTypesClass, "SHULKER", "shulker");
 
 			ClassAccessor vec3dClass = getNMSClass(reflection, "world.phys", "Vec3");
 			vec3dZero = vec3dClass.getConstructor(double.class, double.class, double.class).newInstance(0d, 0d, 0d);
@@ -572,6 +581,25 @@ public class GlowingEntities implements Listener {
 							.getConstructorInstance(int.class)
 					: getNMSClass(reflection, "network.protocol.game", "ClientboundRemoveEntitiesPacket")
 							.getConstructorInstance(int[].class);
+		}
+
+		private static Object getEntityType(
+				@NotNull ReflectionAccessor reflection,
+				@NotNull Version version,
+				@NotNull ClassAccessor entityTypesClass,
+				@NotNull String fieldName,
+				@NotNull String registryName
+		) throws ReflectiveOperationException {
+			if (!version.isAfter(26, 2, 0))
+				return entityTypesClass.getField(fieldName).get(null);
+
+			var builtInRegistriesClass = getNMSClass(reflection, "core.registries", "BuiltInRegistries");
+			var registryClass = getNMSClass(reflection, "core", "Registry");
+			var identifierClass = getNMSClass(reflection, "resources", "Identifier");
+
+			var entityTypeRegistry = builtInRegistriesClass.getField("ENTITY_TYPE").get(null);
+			var identifier = identifierClass.getMethod("withDefaultNamespace", String.class).invoke(null, registryName);
+			return registryClass.getMethod("getValue", identifierClass).invoke(entityTypeRegistry, identifier);
 		}
 
 		public static void sendPackets(Player p, Object... packets) throws ReflectiveOperationException {
@@ -854,7 +882,13 @@ public class GlowingEntities implements Listener {
 				id = "glow-" + uid + color.getChar();
 				Object team = createTeam.newInstance(scoreboardDummy, id);
 				setTeamPush.invoke(team, pushNever);
-				setTeamColor.invoke(team, getColorConstant.invoke(null, color.getChar()));
+
+				if (version.isAfter(26, 2, 0)) {
+					setTeamColor.invoke(team, Optional.of(getColorConstant.invoke(null, color.name().toLowerCase(Locale.ROOT))));
+				} else {
+					setTeamColor.invoke(team, getColorConstant.invoke(null, color.getChar()));
+				}
+
 				Object packetData = createTeamPacketData.newInstance(team);
 				creationPacket = createTeamPacket.newInstance(id, 0, Optional.of(packetData), Collections.EMPTY_LIST);
 			}
