@@ -1,5 +1,6 @@
 package fr.skytasul.glowingentities;
 
+import fr.skytasul.glowingentities.GlowingEntities.EntityIdentifierEID;
 import fr.skytasul.glowingentities.GlowingEntities.Packets;
 import io.papermc.paper.event.packet.PlayerChunkLoadEvent;
 import org.bukkit.Bukkit;
@@ -241,18 +242,22 @@ public class GlowingBlocks implements Listener {
 			this.color = color;
 		}
 
+		private EntityIdentifierEID getEntityIdentifier() {
+			return new GlowingEntities.EntityIdentifierEID(entityId, location.getWorld());
+		}
+
 		public void setColor(@NotNull ChatColor color) throws ReflectiveOperationException {
 			this.color = color;
 
 			if (entityUuid != null)
-				entities.setGlowing(entityId, entityUuid.toString(), player, color, FLAGS);
+				entities.setGlowing(getEntityIdentifier(), entityUuid.toString(), player, color, FLAGS);
 		}
 
 		public void spawn() throws ReflectiveOperationException {
 			init();
 
 			Packets.createEntity(player, entityId, entityUuid, Packets.shulkerEntityType, location);
-			Packets.setMetadata(player, entityId, FLAGS, false);
+			Packets.setMetadata(player, getEntityIdentifier(), FLAGS, false);
 			// this will take care of refreshing the color thanks to the packet handler in GlowingEntities
 		}
 
@@ -261,7 +266,7 @@ public class GlowingBlocks implements Listener {
 				return;
 
 			Packets.removeEntities(player, entityId);
-			entities.unsetGlowing(entityId, player);
+			entities.unsetGlowing(getEntityIdentifier(), player);
 		}
 
 		private void init() throws ReflectiveOperationException {
