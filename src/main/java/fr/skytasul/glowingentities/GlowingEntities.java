@@ -15,6 +15,7 @@ import io.papermc.paper.ServerBuildInfo;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
+import org.bukkit.World;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -23,6 +24,8 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.Plugin;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
 import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
@@ -78,8 +81,7 @@ public class GlowingEntities implements Listener {
 	/**
 	 * Disables the API.
 	 * <p>
-	 * Methods such as {@link #setGlowing(int, String, Player, ChatColor, byte)} and
-	 * {@link #unsetGlowing(int, Player)} will no longer be usable.
+	 * Methods to change the glowing statuses will no longer be usable.
 	 *
 	 * @see #enable()
 	 */
@@ -116,7 +118,7 @@ public class GlowingEntities implements Listener {
 	 * @param receiver player which will see the entity glowing
 	 * @throws ReflectiveOperationException
 	 */
-	public void setGlowing(Entity entity, Player receiver) throws ReflectiveOperationException {
+	public void setGlowing(@NotNull Entity entity, @NotNull Player receiver) throws ReflectiveOperationException {
 		setGlowing(entity, receiver, null);
 	}
 
@@ -128,49 +130,25 @@ public class GlowingEntities implements Listener {
 	 * @param color color of the glowing effect
 	 * @throws ReflectiveOperationException
 	 */
-	public void setGlowing(Entity entity, Player receiver, ChatColor color) throws ReflectiveOperationException {
-		String teamID = entity instanceof Player ? entity.getName() : entity.getUniqueId().toString();
-		setGlowing(entity.getEntityId(), teamID, receiver, color, Packets.getEntityFlags(entity));
-	}
-
-	/**
-	 * Make the entity with specified entity ID glow with its default team color.
-	 *
-	 * @param entityID entity id of the entity to make glow
-	 * @param teamID internal string used to add the entity to a team
-	 * @param receiver player which will see the entity glowing
-	 * @throws ReflectiveOperationException
-	 */
-	public void setGlowing(int entityID, String teamID, Player receiver) throws ReflectiveOperationException {
-		setGlowing(entityID, teamID, receiver, null, (byte) 0);
-	}
-
-	/**
-	 * Make the entity with specified entity ID glow with the specified color.
-	 *
-	 * @param entityID entity id of the entity to make glow
-	 * @param teamID internal string used to add the entity to a team
-	 * @param receiver player which will see the entity glowing
-	 * @param color color of the glowing effect
-	 * @throws ReflectiveOperationException
-	 */
-	public void setGlowing(int entityID, String teamID, Player receiver, ChatColor color)
+	public void setGlowing(@NotNull Entity entity, @NotNull Player receiver, @Nullable ChatColor color)
 			throws ReflectiveOperationException {
-		setGlowing(entityID, teamID, receiver, color, (byte) 0);
+		String teamID = entity instanceof Player ? entity.getName() : entity.getUniqueId().toString();
+		setGlowing(new EntityidentifierRealEntity(entity), teamID, receiver, color, Packets.getEntityFlags(entity));
 	}
 
 	/**
-	 * Make the entity with specified entity ID glow with the specified color, and keep some flags.
+	 * Make an entity glow with the specified color, and keep some flags.
 	 *
-	 * @param entityID entity id of the entity to make glow
+	 * @param entity identifier of the entity to make glow
 	 * @param teamID internal string used to add the entity to a team
 	 * @param receiver player which will see the entity glowing
-	 * @param color color of the glowing effect
+	 * @param color color of the glowing effect or null if it should glow the color of its team (or white if none)
 	 * @param otherFlags internal flags that must be kept (on fire, crouching...). See
 	 *        <a href="https://wiki.vg/Entity_metadata#Entity">wiki.vg</a> for more informations.
 	 * @throws ReflectiveOperationException
 	 */
-	public void setGlowing(int entityID, String teamID, Player receiver, ChatColor color, byte otherFlags)
+	public void setGlowing(@NotNull EntityIdentifier entity, @NotNull String teamID, @NotNull Player receiver,
+			@Nullable ChatColor color, byte otherFlags)
 			throws ReflectiveOperationException {
 		ensureEnabled();
 		if (color != null && !color.isColor())
@@ -183,11 +161,13 @@ public class GlowingEntities implements Listener {
 			glowing.put(receiver, playerData);
 		}
 
-		GlowingData glowingData = playerData.glowingDatas.get(entityID);
+		GlowingData glowingData = playerData.glowingDatas.get(entity);
 		if (glowingData == null) {
 			// the player did not have datas related to the entity: we must create the glowing status
-			glowingData = new GlowingData(playerData, entityID, teamID, color, otherFlags);
-			playerData.glowingDatas.put(entityID, glowingData);
+			glowingData = new GlowingData(playerData, entity, teamID);
+			glowingData.color = color;
+			glowingData.otherFlags = otherFlags;
+			playerData.glowingDatas.put(entity, glowingData);
 
 			Packets.createGlowing(glowingData);
 			if (color != null)
@@ -217,26 +197,26 @@ public class GlowingEntities implements Listener {
 	 * @param receiver player which will no longer see the glowing effect
 	 * @throws ReflectiveOperationException
 	 */
-	public void unsetGlowing(Entity entity, Player receiver) throws ReflectiveOperationException {
-		unsetGlowing(entity.getEntityId(), receiver);
+	public void unsetGlowing(@NotNull Entity entity, @NotNull Player receiver) throws ReflectiveOperationException {
+		unsetGlowing(new EntityidentifierRealEntity(entity), receiver);
 	}
 
 	/**
-	 * Make the entity with specified entity ID passed as a parameter loose its custom glowing effect.
+	 * Make an entity loose its previously existing glowing effect.
 	 * <p>
 	 * This has <b>no effect</b> on glowing status given by another plugin or vanilla behavior.
 	 *
-	 * @param entityID entity id of the entity to remove glowing effect from
+	 * @param entity identifier of the entity to remove glowing effect from
 	 * @param receiver player which will no longer see the glowing effect
 	 * @throws ReflectiveOperationException
 	 */
-	public void unsetGlowing(int entityID, Player receiver) throws ReflectiveOperationException {
+	public void unsetGlowing(@NotNull EntityIdentifier entity, @NotNull Player receiver) throws ReflectiveOperationException {
 		ensureEnabled();
 		PlayerData playerData = glowing.get(receiver);
 		if (playerData == null)
 			return; // the player do not have any entity glowing
 
-		GlowingData glowingData = playerData.glowingDatas.remove(entityID);
+		GlowingData glowingData = playerData.glowingDatas.remove(entity);
 		if (glowingData == null)
 			return; // the player did not have this entity glowing
 
@@ -260,36 +240,74 @@ public class GlowingEntities implements Listener {
 
 		final GlowingEntities instance;
 		final Player player;
-		final Map<Integer, GlowingData> glowingDatas;
+		final Map<EntityIdentifier, GlowingData> glowingDatas = new HashMap<>();
 		ChannelHandler packetsHandler;
 		EnumSet<ChatColor> sentColors;
 
 		PlayerData(GlowingEntities instance, Player player) {
 			this.instance = instance;
 			this.player = player;
-			this.glowingDatas = new HashMap<>();
+		}
+
+		@Nullable GlowingData getDataFromEID(int entityId) {
+			for (GlowingData data : glowingDatas.values()) {
+				if (data.entity.getEntityId(player.getWorld()).orElse(-1) == entityId)
+					return data;
+			}
+			return null;
 		}
 
 	}
 
+	/**
+	 * Uniquely represents an entity (e.g. by its UUID).
+	 *
+	 * This class should implement identity methods (hashCode and equals).
+	 */
+	interface EntityIdentifier {
+		/**
+		 * Returns the entity ID (EID) of the entity represented by this object.
+		 *
+		 * If the entity is not currently in <code>world</code> then an empty Optional should be returned.
+		 * @param world world in which the entity should be
+		 * @return the EID of the entity or an empty optional if the entity is not in the world
+		 */
+		@NotNull OptionalInt getEntityId(@NotNull World world);
+	}
+
+	record EntityIdentifierEID(int entityId, @NotNull World world) implements EntityIdentifier {
+		@Override
+		public @NotNull OptionalInt getEntityId(@NotNull World world) {
+			if (!world.equals(this.world))
+				return OptionalInt.empty();
+			return OptionalInt.of(entityId);
+		}
+	}
+
+	record EntityidentifierRealEntity(@NotNull Entity entity) implements EntityIdentifier {
+		// Bukkit's Entity instance is updated with the new NMS entity when it changes world,
+		// meaning we can continue to use it to check the world and get an accurate EID.
+		@Override
+		public @NotNull OptionalInt getEntityId(@NotNull World world) {
+			if (!world.equals(entity.getWorld()))
+				return OptionalInt.empty();
+			return OptionalInt.of(entity.getEntityId());
+		}
+	}
+
 	private static class GlowingData {
-		// unfortunately this cannot be a Java Record
-		// as the "color" field is not final
+		final @NotNull PlayerData player;
+		final @NotNull String teamID;
+		final @NotNull EntityIdentifier entity;
 
-		final PlayerData player;
-		final int entityID;
-		final String teamID;
-		ChatColor color;
-		byte otherFlags;
-		boolean enabled;
+		@Nullable ChatColor color = null;
+		byte otherFlags = 0;
+		boolean enabled = true;
 
-		GlowingData(PlayerData player, int entityID, String teamID, ChatColor color, byte otherFlags) {
+		GlowingData(@NotNull PlayerData player, @NotNull EntityIdentifier entity, @NotNull String teamID) {
 			this.player = player;
-			this.entityID = entityID;
 			this.teamID = teamID;
-			this.color = color;
-			this.otherFlags = otherFlags;
-			this.enabled = true;
+			this.entity = entity;
 		}
 
 	}
@@ -618,7 +636,7 @@ public class GlowingEntities implements Listener {
 		}
 
 		public static void createGlowing(GlowingData glowingData) throws ReflectiveOperationException {
-			setMetadata(glowingData.player.player, glowingData.entityID, computeFlags(glowingData), true);
+			setMetadata(glowingData.player.player, glowingData.entity, computeFlags(glowingData), true);
 		}
 
 		private static byte computeFlags(GlowingData glowingData) {
@@ -637,7 +655,7 @@ public class GlowingEntities implements Listener {
 		}
 
 		public static void removeGlowing(GlowingData glowingData) throws ReflectiveOperationException {
-			setMetadata(glowingData.player.player, glowingData.entityID, glowingData.otherFlags, true);
+			setMetadata(glowingData.player.player, glowingData.entity, glowingData.otherFlags, true);
 		}
 
 		public static void updateGlowingState(GlowingData glowingData) throws ReflectiveOperationException {
@@ -647,18 +665,22 @@ public class GlowingEntities implements Listener {
 				removeGlowing(glowingData);
 		}
 
-		public static void setMetadata(Player player, int entityId, byte flags, boolean ignore)
+		public static void setMetadata(Player player, EntityIdentifier entity, byte flags, boolean ignore)
 				throws ReflectiveOperationException {
+			var entityIdOpt = entity.getEntityId(player.getWorld());
+			if (entityIdOpt.isEmpty())
+				return;
+
 			List<Object> dataItems = new ArrayList<>(1);
 			dataItems.add(watcherItemConstructor != null ? watcherItemConstructor.newInstance(watcherObjectFlags, flags)
 					: watcherBCreator.invoke(null, watcherObjectFlags, flags));
 
 			Object packetMetadata;
 			if (version.isBefore(1, 19, 3)) {
-				packetMetadata = packetMetadataConstructor.newInstance(entityId, watcherDummy, false);
+				packetMetadata = packetMetadataConstructor.newInstance(entityIdOpt.getAsInt(), watcherDummy, false);
 				packetMetadataItems.set(packetMetadata, dataItems);
 			} else {
-				packetMetadata = packetMetadataConstructor.newInstance(entityId, dataItems);
+				packetMetadata = packetMetadataConstructor.newInstance(entityIdOpt.getAsInt(), dataItems);
 			}
 			if (ignore)
 				packets.put(packetMetadata, dummy);
@@ -733,7 +755,7 @@ public class GlowingEntities implements Listener {
 				public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
 					if (msg.getClass().equals(packetMetadata.getClassInstance()) && packets.asMap().remove(msg) == null) {
 						int entityID = packetMetadataEntity.getInt(msg);
-						GlowingData glowingData = playerData.glowingDatas.get(entityID);
+						GlowingData glowingData = playerData.getDataFromEID(entityID);
 						if (glowingData != null) {
 
 							@SuppressWarnings("unchecked")
@@ -821,7 +843,7 @@ public class GlowingEntities implements Listener {
 
 						if (packet.getClass().equals(packetMetadata)) {
 							int entityID = packetMetadataEntity.getInt(packet);
-							GlowingData glowingData = playerData.glowingDatas.get(entityID);
+							GlowingData glowingData = playerData.getDataFromEID(entityID);
 							if (glowingData != null) {
 								// means the bundle packet contains metadata about an entity that must be glowing.
 								// editing a bundle packet is annoying, so we'll let it go to the player
