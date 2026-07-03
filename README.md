@@ -4,7 +4,7 @@
 
 An util to easily set glowing entities (or blocks) per-player on a Spigot server.
 
-No ProtocolLib, no dependency, compatible from Minecraft 1.17 to 26.1!
+No ProtocolLib, no dependency, compatible from Minecraft 1.17 to 26.2!
 
 ![Glowing entities animation](demo.gif)
 
@@ -23,13 +23,13 @@ Add this requirement to your maven `pom.xml` file:
 ```
 Then, configure the maven shade plugin to relocate the classes location. You can also use the Spigot library resolver to download the library, or Paper's plugin loader.
 
-> [!NOTE]  
-> Until 1.3.4, the util was under the groupId `io.github.skytasul`.  
+> [!NOTE]
+> Until 1.3.4, the util was under the groupId `io.github.skytasul`.<br>
 > After 1.3.5, it has changed to `fr.skytasul`.
 
-> [!IMPORTANT]  
-> When initializing the `GlowingEntities` object, the server must have at least 1 world loaded.  
-> If your plugin's load strategy in *plugin.yml* is `STARTUP`, you have to wait until a world has loaded in before initializing `GlowingEntities`.  
+> [!IMPORTANT]
+> When initializing the `GlowingEntities` object, the server must have at least 1 world loaded.
+> If your plugin's load strategy in *plugin.yml* is `STARTUP`, you have to wait until a world has loaded in before initializing `GlowingEntities`.
 > If your load strategy is `POSTWORLD` (the default load strategy), you can initialize it immediately.
 
 ## How to use?
@@ -50,3 +50,10 @@ The same as before but with the `GlowingBlocks` class :)
 
 > **Warning**
 > The `GlowingBlocks` util can only be used on Paper-based servers, not Bukkit or Spigot ones!
+
+### Advanced usage (fake entities)
+If you want to make fake entities glow (= entities that do not really exist in the world, i.e. that don't have Bukkit Entity instances), you'll have to use the `setGlowing(EntityIdentifier entity, String teamID, Player receiver, ChatColor color, byte otherFlags)` method.
+
+The `EntityIdentifier` instance is what allows GlowingEntities to track which entity to make glow by providing an accurate entity ID (EID). Since the EID of an entity can change during its lifespan (e.g. when changing world), you have to carefully craft an `EntityIdentifier` implementation.
+
+If your fake entity is a simple one that keeps the same entity ID and does not change worlds, you can use the pre-made implementation: `new EntityIdentifierEID(entityId, world)`.

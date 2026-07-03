@@ -5,7 +5,7 @@
 
 	<groupId>fr.skytasul</groupId>
 	<artifactId>glowingentities</artifactId>
-	<version>1.4.11</version>
+	<version>2.0.0</version>
 
 	<name>GlowingEntities</name>
 	<description>A Spigot and Paper util to easily make entities glow.</description>
@@ -52,7 +52,8 @@
 			<groupId>io.papermc.paper</groupId>
 			<artifactId>paper-api</artifactId>
 			<!-- No SNAPSHOT for maven central publishing -->
-			<version>26.1.2.build.5-alpha</version>
+			<!-- 1.20.6 is the first version to have the ServerBuildInfo class -->
+			<version>1.20.6-R0.1-20241030.191541-127</version>
 			<scope>provided</scope>
 		</dependency>
 
