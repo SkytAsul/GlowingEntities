@@ -264,7 +264,7 @@ public class GlowingEntities implements Listener {
 	 *
 	 * This class should implement identity methods (hashCode and equals).
 	 */
-	interface EntityIdentifier {
+	public interface EntityIdentifier {
 		/**
 		 * Returns the entity ID (EID) of the entity represented by this object.
 		 *
@@ -275,7 +275,7 @@ public class GlowingEntities implements Listener {
 		@NotNull OptionalInt getEntityId(@NotNull World world);
 	}
 
-	record EntityIdentifierEID(int entityId, @NotNull World world) implements EntityIdentifier {
+	public record EntityIdentifierEID(int entityId, @NotNull World world) implements EntityIdentifier {
 		@Override
 		public @NotNull OptionalInt getEntityId(@NotNull World world) {
 			if (!world.equals(this.world))
@@ -284,7 +284,7 @@ public class GlowingEntities implements Listener {
 		}
 	}
 
-	record EntityidentifierRealEntity(@NotNull Entity entity) implements EntityIdentifier {
+	public record EntityidentifierRealEntity(@NotNull Entity entity) implements EntityIdentifier {
 		// Bukkit's Entity instance is updated with the new NMS entity when it changes world,
 		// meaning we can continue to use it to check the world and get an accurate EID.
 		@Override
