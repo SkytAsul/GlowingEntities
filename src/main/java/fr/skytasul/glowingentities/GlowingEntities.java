@@ -31,6 +31,7 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
@@ -240,7 +241,8 @@ public class GlowingEntities implements Listener {
 
 		final GlowingEntities instance;
 		final Player player;
-		final Map<EntityIdentifier, GlowingData> glowingDatas = new HashMap<>();
+		// Written on the server thread and read from the Netty outbound handler.
+		final Map<EntityIdentifier, GlowingData> glowingDatas = new ConcurrentHashMap<>();
 		ChannelHandler packetsHandler;
 		EnumSet<ChatColor> sentColors;
 
@@ -301,8 +303,8 @@ public class GlowingEntities implements Listener {
 		final @NotNull EntityIdentifier entity;
 
 		@Nullable ChatColor color = null;
-		byte otherFlags = 0;
-		boolean enabled = true;
+		volatile byte otherFlags = 0;
+		volatile boolean enabled = true;
 
 		GlowingData(@NotNull PlayerData player, @NotNull EntityIdentifier entity, @NotNull String teamID) {
 			this.player = player;
