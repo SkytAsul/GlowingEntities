@@ -304,7 +304,7 @@ public class GlowingEntities implements Listener {
 
 		@Nullable ChatColor color = null;
 		volatile byte otherFlags = 0;
-		volatile boolean enabled = true;
+		boolean enabled = true;
 
 		GlowingData(@NotNull PlayerData player, @NotNull EntityIdentifier entity, @NotNull String teamID) {
 			this.player = player;
