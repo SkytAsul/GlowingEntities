@@ -25,7 +25,11 @@ public class GlowingEntitiesMappingsGenerator {
 	}
 
 	public void start() throws MappingGenerationException, IOException {
-		var spigotShrieker = new MappingsShrieker(new ProguardMapping(true), GlowingEntities.Packets::loadReflection);
+		var spigotShrieker = new MappingsShrieker(new ProguardMapping(true), (reflection, version) -> {
+			GlowingEntities.Packets.loadReflection(reflection, version);
+			if (version.isAfter(1, 19, 4))
+				GlowingEntities.Packets.loadBlockDisplayReflection(reflection, version);
+		});
 
 		for (var version : Version.parseArray(
 				"1.17", "1.17.1",
