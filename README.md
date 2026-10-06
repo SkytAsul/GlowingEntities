@@ -4,7 +4,7 @@
 
 An util to easily set glowing entities (or blocks) per-player on a Spigot server.
 
-No ProtocolLib, no dependency, compatible from Minecraft 1.17 to 26.2!
+No ProtocolLib, no dependency, compatible from Minecraft 1.17 to 26.3!
 
 ![Glowing entities animation](demo.gif)
 
@@ -46,10 +46,29 @@ It is not recommended to create multiple `GlowingEntities` instances!
 5. When you are completely done with the glowing API (for instance, when your plugin is shutting down), remember to use `GlowingEntities#disable()`.
 
 ### Make blocks glow
-The same as before but with the `GlowingBlocks` class :)
+`GlowingBlocks` shows a full-block outline using invisible Shulkers on Minecraft 1.17 to 26.3.
+Its outline is always a cube, even at empty locations. `GlowingBlockDisplays` displays a visible
+block model and a matching outline on Minecraft 1.19.4 to 26.3.
+
+1. Initialize either `new GlowingBlocks(plugin)` or `new GlowingBlockDisplays(plugin)`.
+
+2. Use `setGlowing(block, receiver, color)` or `setGlowing(location, receiver, color)`.
+`GlowingBlockDisplays` also accepts `setGlowing(block, blockData, receiver, color)` and
+`setGlowing(location, blockData, receiver, color)` to display a specified state, including in air.
+
+3. Call `setGlowing` again to change the color. Displays also update the state with the same color:
+the current block state is read, or the specified `BlockData` is copied and saved for chunk resends.
+
+4. Use `unsetGlowing(block, receiver)` or `unsetGlowing(location, receiver)` to remove the effect.
+
+5. Call `disable()` when you are done with the API.
+
+Neither class changes the world or creates server-side entities. Display rendering follows the
+client, including lighting and material support; overlapping solid blocks may darken models.
+Pass adjacent connections and stair shapes explicitly.
 
 > **Warning**
-> The `GlowingBlocks` util can only be used on Paper-based servers, not Bukkit or Spigot ones!
+> The `GlowingBlocks` and `GlowingBlockDisplays` utils can only be used on Paper-based servers, not Bukkit or Spigot ones!
 
 ### Advanced usage (fake entities)
 If you want to make fake entities glow (= entities that do not really exist in the world, i.e. that don't have Bukkit Entity instances), you'll have to use the `setGlowing(EntityIdentifier entity, String teamID, Player receiver, ChatColor color, byte otherFlags)` method.

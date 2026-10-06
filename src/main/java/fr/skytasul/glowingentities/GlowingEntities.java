@@ -16,6 +16,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.World;
+import org.bukkit.block.data.BlockData;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -325,6 +326,7 @@ public class GlowingEntities implements Listener {
 		private static Logger logger;
 		private static String cpack;
 		private static Version version;
+		private static ReflectionAccessor reflection;
 
 		private static boolean isEnabled = false;
 		private static boolean hasInitialized = false;
@@ -375,6 +377,9 @@ public class GlowingEntities implements Listener {
 
 		// Entities
 		protected static Object shulkerEntityType;
+		protected static Object blockDisplayEntityType;
+		private static Object watcherObjectBlockState;
+		private static Method getBlockState;
 		private static Constructor<?> packetAddEntity;
 		private static Constructor<?> packetRemove;
 		private static Object vec3dZero;
@@ -416,7 +421,6 @@ public class GlowingEntities implements Listener {
 				cpack = Bukkit.getServer().getClass().getPackage().getName() + ".";
 
 				boolean remapped = Bukkit.getServer().getClass().getPackage().getName().split("\\.").length == 3;
-				ReflectionAccessor reflection;
 
 				if (remapped) {
 					version = serverVersion;
@@ -457,6 +461,31 @@ public class GlowingEntities implements Listener {
 					logger.log(Level.SEVERE, errorMsg, ex);
 				}
 			}
+		}
+
+		protected static void ensureBlockDisplaysInitialized() {
+			ensureInitialized();
+			if (version.isBefore(1, 19, 4))
+				throw new UnsupportedOperationException("The GlowingBlockDisplays util requires Minecraft 1.19.4 or newer.");
+
+			if (blockDisplayEntityType != null)
+				return;
+
+			try {
+				loadBlockDisplayReflection(reflection, version);
+			} catch (ReflectiveOperationException ex) {
+				throw new IllegalStateException("The Glowing Block Displays API failed to initialize.", ex);
+			}
+		}
+
+		protected static void loadBlockDisplayReflection(@NotNull ReflectionAccessor reflection, @NotNull Version version)
+				throws ReflectiveOperationException {
+			watcherObjectBlockState = getNMSClass(reflection, "world.entity", "Display$BlockDisplay")
+					.getField("DATA_BLOCK_STATE_ID").get(null);
+			getBlockState = cpack == null ? null
+					: getCraftClass("block.data", "CraftBlockData").getDeclaredMethod("getState");
+			blockDisplayEntityType = getEntityType(reflection, version,
+					getNMSClass(reflection, "world.entity", "EntityType"), "BLOCK_DISPLAY", "block_display");
 		}
 
 		protected static void loadReflection(@NotNull ReflectionAccessor reflection, @NotNull Version version)
@@ -687,6 +716,18 @@ public class GlowingEntities implements Listener {
 			if (ignore)
 				packets.put(packetMetadata, dummy);
 			sendPackets(player, packetMetadata);
+		}
+
+		public static void setBlockDisplayMetadata(Player player, EntityIdentifier entity, BlockData blockData)
+				throws ReflectiveOperationException {
+			var entityIdOpt = entity.getEntityId(player.getWorld());
+			if (entityIdOpt.isEmpty())
+				return;
+
+			List<Object> dataItems = new ArrayList<>(2);
+			dataItems.add(createFlagWatcherItem((byte) 0));
+			dataItems.add(watcherBCreator.invoke(null, watcherObjectBlockState, getBlockState.invoke(blockData)));
+			sendPackets(player, packetMetadataConstructor.newInstance(entityIdOpt.getAsInt(), dataItems));
 		}
 
 		public static void setGlowingColor(GlowingData glowingData) throws ReflectiveOperationException {

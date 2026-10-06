@@ -7,12 +7,14 @@ import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.block.Block;
+import org.bukkit.block.data.BlockData;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
 import org.bukkit.plugin.Plugin;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -30,6 +32,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class GlowingBlocks implements Listener {
 
 	private final @NotNull GlowingEntities entities;
+	private final boolean blockDisplays;
 	private Map<Player, PlayerData> glowing;
 	private boolean enabled = false;
 
@@ -39,8 +42,15 @@ public class GlowingBlocks implements Listener {
 	 * @param plugin plugin that will be used to register the events.
 	 */
 	public GlowingBlocks(@NotNull Plugin plugin) {
-		testForPaper();
+		this(plugin, false);
+	}
 
+	GlowingBlocks(@NotNull Plugin plugin, boolean blockDisplays) {
+		testForPaper();
+		if (blockDisplays)
+			Packets.ensureBlockDisplaysInitialized();
+
+		this.blockDisplays = blockDisplays;
 		this.entities = new GlowingEntities(plugin);
 
 		enable();
@@ -124,6 +134,11 @@ public class GlowingBlocks implements Listener {
 	 */
 	public void setGlowing(@NotNull Location block, @NotNull Player receiver, @NotNull ChatColor color)
 			throws ReflectiveOperationException {
+		setGlowingBlock(block, null, receiver, color);
+	}
+
+	void setGlowingBlock(@NotNull Location block, @Nullable BlockData data, @NotNull Player receiver,
+			@NotNull ChatColor color) throws ReflectiveOperationException {
 		ensureEnabled();
 
 		block = normalizeLocation(block);
@@ -131,16 +146,22 @@ public class GlowingBlocks implements Listener {
 		if (!color.isColor())
 			throw new IllegalArgumentException("ChatColor must be a color format");
 
+		if (data != null)
+			data = data.clone();
+
 		PlayerData playerData = glowing.computeIfAbsent(Objects.requireNonNull(receiver), PlayerData::new);
 
 		GlowingBlockData blockData = playerData.datas.get(block);
 		if (blockData == null) {
-			blockData = new GlowingBlockData(receiver, block, color);
+			blockData = new GlowingBlockData(receiver, block, color, data);
 			playerData.datas.put(block, blockData);
 			if (canSee(receiver, block))
 				blockData.spawn();
 		} else {
 			blockData.setColor(color);
+			blockData.data = data;
+			if (blockDisplays && blockData.entityUuid != null && canSee(receiver, block))
+				blockData.sendMetadata();
 		}
 	}
 
@@ -188,6 +209,9 @@ public class GlowingBlocks implements Listener {
 	}
 
 	private boolean canSee(Player player, Location location) {
+		if (!Objects.equals(player.getWorld(), location.getWorld()))
+			return false;
+
 		// little Pythagorean theorem with 1 chunk as the unit distance
 		int viewDistance = Math.min(player.getViewDistance(), Bukkit.getViewDistance());
 		int deltaChunkX = (player.getLocation().getBlockX() >> 4) - (location.getBlockX() >> 4);
@@ -233,13 +257,16 @@ public class GlowingBlocks implements Listener {
 		private final @NotNull Location location;
 
 		private @NotNull ChatColor color;
+		private @Nullable BlockData data;
 		private int entityId;
 		private UUID entityUuid;
 
-		public GlowingBlockData(@NotNull Player player, @NotNull Location location, @NotNull ChatColor color) {
+		public GlowingBlockData(@NotNull Player player, @NotNull Location location, @NotNull ChatColor color,
+				@Nullable BlockData data) {
 			this.player = player;
 			this.location = location;
 			this.color = color;
+			this.data = data;
 		}
 
 		private EntityIdentifierEID getEntityIdentifier() {
@@ -250,15 +277,24 @@ public class GlowingBlocks implements Listener {
 			this.color = color;
 
 			if (entityUuid != null)
-				entities.setGlowing(getEntityIdentifier(), entityUuid.toString(), player, color, FLAGS);
+				entities.setGlowing(getEntityIdentifier(), entityUuid.toString(), player, color,
+						blockDisplays ? (byte) 0 : FLAGS);
 		}
 
 		public void spawn() throws ReflectiveOperationException {
 			init();
 
-			Packets.createEntity(player, entityId, entityUuid, Packets.shulkerEntityType, location);
-			Packets.setMetadata(player, getEntityIdentifier(), FLAGS, false);
+			Packets.createEntity(player, entityId, entityUuid,
+					blockDisplays ? Packets.blockDisplayEntityType : Packets.shulkerEntityType, location);
+			sendMetadata();
 			// this will take care of refreshing the color thanks to the packet handler in GlowingEntities
+		}
+
+		private void sendMetadata() throws ReflectiveOperationException {
+			if (blockDisplays)
+				Packets.setBlockDisplayMetadata(player, getEntityIdentifier(), data);
+			else
+				Packets.setMetadata(player, getEntityIdentifier(), FLAGS, false);
 		}
 
 		public void remove() throws ReflectiveOperationException {
