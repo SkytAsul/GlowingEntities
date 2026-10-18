@@ -843,7 +843,7 @@ public class GlowingEntities implements Listener {
 					for (Iterator iterator = subPackets.iterator(); iterator.hasNext();) {
 						Object packet = iterator.next();
 
-						if (packet.getClass().equals(packetMetadata)) {
+						if (packet.getClass().equals(packetMetadata.getClassInstance())) {
 							int entityID = packetMetadataEntity.getInt(packet);
 							GlowingData glowingData = playerData.getDataFromEID(entityID);
 							if (glowingData != null) {
