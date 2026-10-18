@@ -843,7 +843,7 @@ public class GlowingEntities implements Listener {
 					for (Iterator iterator = subPackets.iterator(); iterator.hasNext();) {
 						Object packet = iterator.next();
 
-						if (packet.getClass().equals(packetMetadata)) {
+						if (packet.getClass().equals(packetMetadata.getClassInstance())) {
 							int entityID = packetMetadataEntity.getInt(packet);
 							GlowingData glowingData = playerData.getDataFromEID(entityID);
 							if (glowingData != null) {
@@ -851,7 +851,7 @@ public class GlowingEntities implements Listener {
 								// editing a bundle packet is annoying, so we'll let it go to the player
 								// and then send a metadata packet containing the correct glowing flag.
 
-								Bukkit.getScheduler().runTaskLaterAsynchronously(playerData.instance.plugin, () -> {
+								Bukkit.getScheduler().runTaskLater(playerData.instance.plugin, () -> {
 									try {
 										updateGlowingState(glowingData);
 									} catch (ReflectiveOperationException e) {
