@@ -52,8 +52,11 @@ It is not recommended to create multiple `GlowingEntities` instances!
    On Minecraft 1.19.4 and newer, partial blocks use their BlockDisplay model.
    Full blocks, air, liquids and older versions use a Shulker cube outline.
 
-3. Use `setGlowingShulker` to force a cube outline or `setGlowingDisplay` (1.19.4+) to force the block model.
-   `setGlowingDisplay` also accepts an RGB `Color` and an optional `Display.Brightness`.
+3. Use `setGlowingShulker(location, receiver, color)` for a cube outline or
+   `setGlowingDisplay(block, receiver, color)` (1.19.4+) for the block model.
+   Use `setGlowingDisplay(location, blockData, receiver, color)` to display a chosen state, including in the air.
+   The state is copied and kept across chunk reloads. Pass `null` for `blockData` to use the world block.
+   Display methods also accept an RGB `Color` and an optional `Display.Brightness`.
    By default, Display brightness is estimated from exposed sides. It can look different from the original block,
    especially for full blocks, because the entire model shares one brightness setting.
 

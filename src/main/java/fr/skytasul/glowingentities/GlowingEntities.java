@@ -327,7 +327,6 @@ public class GlowingEntities implements Listener {
 		private static String cpack;
 		private static Version version;
 		private static boolean blockDisplaysSupported;
-		private static ReflectionAccessor reflection;
 
 		private static boolean isEnabled = false;
 		private static boolean hasInitialized = false;
@@ -425,6 +424,7 @@ public class GlowingEntities implements Listener {
 				cpack = Bukkit.getServer().getClass().getPackage().getName() + ".";
 
 				boolean remapped = Bukkit.getServer().getClass().getPackage().getName().split("\\.").length == 3;
+				ReflectionAccessor reflection;
 
 				if (remapped) {
 					version = serverVersion;
@@ -471,19 +471,10 @@ public class GlowingEntities implements Listener {
 			return blockDisplaysSupported;
 		}
 
-		protected static void ensureBlockDisplaysInitialized() {
+		protected static void ensureBlockDisplaysSupported() {
 			ensureInitialized();
 			if (!supportsBlockDisplays())
 				throw new UnsupportedOperationException("Block displays require Minecraft 1.19.4 or newer.");
-
-			if (blockDisplayEntityType != null)
-				return;
-
-			try {
-				loadBlockDisplayReflection(reflection, version);
-			} catch (ReflectiveOperationException ex) {
-				throw new IllegalStateException("The Glowing Block Displays API failed to initialize.", ex);
-			}
 		}
 
 		protected static void loadBlockDisplayReflection(@NotNull ReflectionAccessor reflection, @NotNull Version version)
@@ -641,6 +632,9 @@ public class GlowingEntities implements Listener {
 							.getConstructorInstance(int.class)
 					: getNMSClass(reflection, "network.protocol.game", "ClientboundRemoveEntitiesPacket")
 							.getConstructorInstance(int[].class);
+
+			if (!version.isBefore(1, 19, 4))
+				loadBlockDisplayReflection(reflection, version);
 		}
 
 		private static Object getEntityType(
