@@ -131,6 +131,7 @@ public class GlowingBlocks implements Listener {
 	 * <p>
 	 * On Minecraft 1.19.4 and newer, partial blocks use a BlockDisplay. Full blocks, air and
 	 * liquids use a Shulker, as do all blocks on older servers.
+	 * The choice is made when this method is called and kept across chunk reloads.
 	 *
 	 * @param block location of the block to make glow
 	 * @param receiver player which will see the block glowing
@@ -166,7 +167,7 @@ public class GlowingBlocks implements Listener {
 		if (!color.isColor())
 			throw new IllegalArgumentException("ChatColor must be a color format");
 
-		setGlowingBlock(new GlowingShulkerData(receiver, location, color, null));
+		setGlowingBlock(new GlowingShulkerData(receiver, location, color));
 	}
 
 	/**
@@ -288,7 +289,7 @@ public class GlowingBlocks implements Listener {
 			throw new IllegalArgumentException("ChatColor must be a color format");
 
 		setGlowingBlock(new GlowingDisplayData(receiver, location, blockData,
-				color.asBungee().getColor().getRGB() & 0xFFFFFF, brightness, null));
+				color.asBungee().getColor().getRGB() & 0xFFFFFF, brightness));
 	}
 
 	/**
@@ -311,14 +312,14 @@ public class GlowingBlocks implements Listener {
 		location = normalizeLocation(location);
 
 		setGlowingBlock(new GlowingDisplayData(receiver, location, blockData,
-				color.asRGB(), brightness, null));
+				color.asRGB(), brightness));
 	}
 
 	private GlowingBlockData createAutomaticData(Player player, Location location, ChatColor color) {
 		if (useDisplay(location))
 			return new GlowingDisplayData(player, location, null,
-					color.asBungee().getColor().getRGB() & 0xFFFFFF, null, color);
-		return new GlowingShulkerData(player, location, color, color);
+					color.asBungee().getColor().getRGB() & 0xFFFFFF, null);
+		return new GlowingShulkerData(player, location, color);
 	}
 
 	private void setGlowingBlock(GlowingBlockData blockData) throws ReflectiveOperationException {
@@ -335,23 +336,14 @@ public class GlowingBlocks implements Listener {
 		playerData.datas.put(blockData.location, blockData);
 
 		if (canSee(blockData.player, blockData.location))
-			show(playerData, blockData, false);
+			show(blockData, false);
 		else if (blockData.entityUuid != null
 				&& Objects.equals(blockData.player.getWorld(), blockData.location.getWorld()))
 			blockData.update();
 	}
 
-	private void show(PlayerData playerData, GlowingBlockData blockData, boolean chunkLoad)
+	private void show(GlowingBlockData blockData, boolean chunkLoad)
 			throws ReflectiveOperationException {
-		if (blockData.autoSelectionColor != null
-				&& useDisplay(blockData.location) != (blockData instanceof GlowingDisplayData)) {
-			GlowingBlockData replacement =
-					createAutomaticData(blockData.player, blockData.location, blockData.autoSelectionColor);
-			blockData.remove();
-			playerData.datas.put(blockData.location, replacement);
-			blockData = replacement;
-		}
-
 		if (blockData instanceof GlowingDisplayData && !isChunkLoaded(blockData.location))
 			return;
 
@@ -439,7 +431,7 @@ public class GlowingBlocks implements Listener {
 					&& location.getBlockX() >> 4 == event.getChunk().getX()
 					&& location.getBlockZ() >> 4 == event.getChunk().getZ()) {
 				try {
-					show(playerData, blockData, true);
+					show(blockData, true);
 				} catch (ReflectiveOperationException ex) {
 					ex.printStackTrace();
 				}
@@ -448,7 +440,7 @@ public class GlowingBlocks implements Listener {
 	}
 
 	private boolean useDisplay(Location location) {
-		return Packets.supportsBlockDisplays() && isChunkLoaded(location) && isPartialBlock(location.getBlock());
+		return Packets.supportsBlockDisplays() && isPartialBlock(location.getBlock());
 	}
 
 	private static boolean isChunkLoaded(Location location) {
@@ -508,14 +500,12 @@ public class GlowingBlocks implements Listener {
 
 		protected final @NotNull Player player;
 		protected final @NotNull Location location;
-		private final @Nullable ChatColor autoSelectionColor;
 		protected int entityId;
 		protected UUID entityUuid;
 
-		public GlowingBlockData(@NotNull Player player, @NotNull Location location, @Nullable ChatColor autoSelectionColor) {
+		public GlowingBlockData(@NotNull Player player, @NotNull Location location) {
 			this.player = player;
 			this.location = location;
-			this.autoSelectionColor = autoSelectionColor;
 		}
 
 		protected EntityIdentifierEID getEntityIdentifier() {
@@ -553,8 +543,8 @@ public class GlowingBlocks implements Listener {
 
 		private @NotNull ChatColor color;
 
-		GlowingShulkerData(Player player, Location location, ChatColor color, @Nullable ChatColor autoSelectionColor) {
-			super(player, location, autoSelectionColor);
+		GlowingShulkerData(Player player, Location location, ChatColor color) {
+			super(player, location);
 			this.color = color;
 		}
 
@@ -594,8 +584,8 @@ public class GlowingBlocks implements Listener {
 		private final @Nullable Brightness brightness;
 
 		GlowingDisplayData(Player player, Location location, @Nullable BlockData blockData, int color,
-				@Nullable Brightness brightness, @Nullable ChatColor autoSelectionColor) {
-			super(player, location, autoSelectionColor);
+				@Nullable Brightness brightness) {
+			super(player, location);
 			this.blockData = blockData == null ? null : blockData.clone();
 			this.color = color;
 			this.brightness = brightness;
