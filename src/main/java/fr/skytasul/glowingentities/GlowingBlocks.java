@@ -155,7 +155,7 @@ public class GlowingBlocks implements Listener {
 		GlowingBlockData glowingBlockData;
 		if (useDisplay(location)) {
 			Block block = location.getBlock();
-			glowingBlockData = new GlowingDisplayData(receiver, location, block.getBlockData(),
+			glowingBlockData = new GlowingDisplayData(receiver, location, block.getBlockData().clone(),
 					color.asBungee().getColor().getRGB() & 0xFFFFFF, estimateBrightness(block));
 		} else {
 			glowingBlockData = new GlowingShulkerData(receiver, location, color);
@@ -232,8 +232,8 @@ public class GlowingBlocks implements Listener {
 
 		location = normalizeLocation(location);
 
-		setGlowingBlockInternal(new GlowingDisplayData(receiver, location, blockData,
-				color.asRGB(), brightness));
+		setGlowingBlockInternal(new GlowingDisplayData(receiver, location, blockData.clone(),
+				color.asRGB(), Objects.requireNonNull(brightness)));
 	}
 
 	private void setGlowingBlockInternal(GlowingBlockData blockData) throws ReflectiveOperationException {
@@ -241,42 +241,17 @@ public class GlowingBlocks implements Listener {
 		GlowingBlockData previous = playerData.datas.get(blockData.location);
 		if (previous != null) {
 			if (previous.getClass() == blockData.getClass()) {
-				blockData.entityId = previous.entityId;
-				blockData.entityUuid = previous.entityUuid;
-			} else {
-				previous.remove();
+				// we update in the same type of glowing: easy way
+				previous.update(blockData);
+				return;
 			}
+			// we are changing glowing type: we first remove the old glowing before setting up the new one
+			previous.remove();
 		}
+
 		playerData.datas.put(blockData.location, blockData);
-
 		if (canSee(blockData.player, blockData.location))
-			show(blockData, false);
-		else if (blockData.entityUuid != null
-				&& Objects.equals(blockData.player.getWorld(), blockData.location.getWorld()))
-			blockData.update();
-	}
-
-	private void show(GlowingBlockData blockData, boolean chunkLoad)
-			throws ReflectiveOperationException {
-		if (blockData instanceof GlowingDisplayData && !isChunkLoaded(blockData.location))
-			return;
-
-		boolean firstSpawn = blockData.entityUuid == null;
-		try {
-			if (firstSpawn || chunkLoad)
-				blockData.spawn();
-			else
-				blockData.update();
-		} catch (ReflectiveOperationException ex) {
-			if (firstSpawn) {
-				try {
-					blockData.remove();
-				} catch (ReflectiveOperationException cleanup) {
-					ex.addSuppressed(cleanup);
-				}
-			}
-			throw ex;
-		}
+			blockData.spawn();
 	}
 
 	/**
@@ -346,7 +321,7 @@ public class GlowingBlocks implements Listener {
 					&& location.getBlockX() >> 4 == event.getChunk().getX()
 					&& location.getBlockZ() >> 4 == event.getChunk().getZ()) {
 				try {
-					show(blockData, true);
+					blockData.spawn();
 				} catch (ReflectiveOperationException ex) {
 					ex.printStackTrace();
 				}
@@ -356,10 +331,6 @@ public class GlowingBlocks implements Listener {
 
 	private boolean useDisplay(Location location) {
 		return Packets.supportsBlockDisplays() && isPartialBlock(location.getBlock());
-	}
-
-	private static boolean isChunkLoaded(Location location) {
-		return location.getWorld().isChunkLoaded(location.getBlockX() >> 4, location.getBlockZ() >> 4);
 	}
 
 	private static boolean isPartialBlock(Block block) {
@@ -429,7 +400,7 @@ public class GlowingBlocks implements Listener {
 
 		abstract void spawn() throws ReflectiveOperationException;
 
-		abstract void update() throws ReflectiveOperationException;
+		abstract void update(GlowingBlockData newData) throws ReflectiveOperationException;
 
 		void remove() throws ReflectiveOperationException {
 			if (entityUuid == null)
@@ -480,8 +451,9 @@ public class GlowingBlocks implements Listener {
 		}
 
 		@Override
-		void update() throws ReflectiveOperationException {
-			setColor(color);
+		void update(GlowingBlockData newData) throws ReflectiveOperationException {
+			var newShulkerData = (GlowingShulkerData) newData;
+			setColor(newShulkerData.color);
 		}
 
 		@Override
@@ -493,16 +465,17 @@ public class GlowingBlocks implements Listener {
 
 	private class GlowingDisplayData extends GlowingBlockData {
 
-		private final @NotNull BlockData blockData;
-		private final int color;
-		private final @NotNull Brightness brightness;
+		private int color;
+		private @NotNull BlockData blockData;
+		private @NotNull Brightness brightness;
 
 		GlowingDisplayData(Player player, Location location, @NotNull BlockData blockData, int color,
 				@NotNull Brightness brightness) {
 			super(player, location);
-			this.blockData = Objects.requireNonNull(blockData.clone());
-			this.color = Objects.requireNonNull(color);
-			this.brightness = Objects.requireNonNull(brightness);
+
+			this.blockData = blockData;
+			this.color = color;
+			this.brightness = brightness;
 		}
 
 		@Override
@@ -514,8 +487,14 @@ public class GlowingBlocks implements Listener {
 		}
 
 		@Override
-		void update() throws ReflectiveOperationException {
-			if (canSee(player, location) && isChunkLoaded(location))
+		void update(GlowingBlockData newData) throws ReflectiveOperationException {
+			var newDisplayData = (GlowingDisplayData) newData;
+			
+			this.blockData = newDisplayData.blockData;
+			this.color = newDisplayData.color;
+			this.brightness = newDisplayData.brightness;
+
+			if (canSee(player, location))
 				sendMetadata();
 		}
 
