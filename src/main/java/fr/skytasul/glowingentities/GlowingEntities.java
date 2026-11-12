@@ -633,7 +633,7 @@ public class GlowingEntities implements Listener {
 					: getNMSClass(reflection, "network.protocol.game", "ClientboundRemoveEntitiesPacket")
 							.getConstructorInstance(int[].class);
 
-			if (!version.isBefore(1, 19, 4))
+			if (supportsBlockDisplays())
 				loadBlockDisplayReflection(reflection, version);
 		}
 

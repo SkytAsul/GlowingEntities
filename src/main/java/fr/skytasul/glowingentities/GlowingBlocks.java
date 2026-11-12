@@ -115,6 +115,10 @@ public class GlowingBlocks implements Listener {
 
 	/**
 	 * Makes the {@link Block} passed as a parameter glow with the specified color.
+	 * <p>
+	 * On Minecraft 1.19.4 and newer, partial blocks use a BlockDisplay. Full blocks, air and
+	 * liquids use a Shulker, as do all blocks on older servers.
+	 * The choice is made when this method is called and kept across chunk reloads.
 	 *
 	 * @param block block to make glow
 	 * @param receiver player which will see the block glowing
@@ -133,21 +137,30 @@ public class GlowingBlocks implements Listener {
 	 * liquids use a Shulker, as do all blocks on older servers.
 	 * The choice is made when this method is called and kept across chunk reloads.
 	 *
-	 * @param block location of the block to make glow
+	 * @param location location of the block to make glow
 	 * @param receiver player which will see the block glowing
 	 * @param color color of the glowing effect
 	 * @throws ReflectiveOperationException
 	 */
-	public void setGlowing(@NotNull Location block, @NotNull Player receiver, @NotNull ChatColor color)
+	public void setGlowing(@NotNull Location location, @NotNull Player receiver, @NotNull ChatColor color)
 			throws ReflectiveOperationException {
 		ensureEnabled();
 
-		block = normalizeLocation(block);
+		location = normalizeLocation(location);
 
 		if (!color.isColor())
 			throw new IllegalArgumentException("ChatColor must be a color format");
 
-		setGlowingBlock(createAutomaticData(receiver, block, color));
+
+		GlowingBlockData glowingBlockData;
+		if (useDisplay(location)) {
+			Block block = location.getBlock();
+			glowingBlockData = new GlowingDisplayData(receiver, location, block.getBlockData(),
+					color.asBungee().getColor().getRGB() & 0xFFFFFF, estimateBrightness(block));
+		} else {
+			glowingBlockData = new GlowingShulkerData(receiver, location, color);
+		}
+		setGlowingBlockInternal(glowingBlockData);
 	}
 
 	/**
@@ -167,22 +180,7 @@ public class GlowingBlocks implements Listener {
 		if (!color.isColor())
 			throw new IllegalArgumentException("ChatColor must be a color format");
 
-		setGlowingBlock(new GlowingShulkerData(receiver, location, color));
-	}
-
-	/**
-	 * Shows the glowing model of the block passed as a parameter.
-	 *
-	 * @param block block to make glow
-	 * @param receiver player which will see the block glowing
-	 * @param color color of the glowing effect
-	 * @throws UnsupportedOperationException if the server is older than Minecraft 1.19.4
-	 * @throws ReflectiveOperationException
-	 * @see #setGlowingDisplay(Location, BlockData, Player, ChatColor, Brightness)
-	 */
-	public void setGlowingDisplay(@NotNull Block block, @NotNull Player receiver, @NotNull ChatColor color)
-			throws ReflectiveOperationException {
-		setGlowingDisplay(block.getLocation(), null, receiver, color, null);
+		setGlowingBlockInternal(new GlowingShulkerData(receiver, location, color));
 	}
 
 	/**
@@ -193,31 +191,15 @@ public class GlowingBlocks implements Listener {
 	 * @param color RGB color of the glowing effect
 	 * @throws UnsupportedOperationException if the server is older than Minecraft 1.19.4
 	 * @throws ReflectiveOperationException
-	 * @see #setGlowingDisplay(Location, BlockData, Player, ChatColor, Brightness)
+	 * @see #setGlowingDisplay(Location, BlockData, Player, Color, Brightness)
 	 */
 	public void setGlowingDisplay(@NotNull Block block, @NotNull Player receiver, @NotNull Color color)
 			throws ReflectiveOperationException {
-		setGlowingDisplay(block.getLocation(), null, receiver, color, null);
+		setGlowingDisplay(block.getLocation(), block.getBlockData(), receiver, color, estimateBrightness(block));
 	}
 
 	/**
-	 * Shows the glowing model of the block passed as a parameter.
-	 *
-	 * @param block block to make glow
-	 * @param receiver player which will see the block glowing
-	 * @param color color of the glowing effect
-	 * @param brightness block and sky light levels, or {@code null} to estimate them
-	 * @throws UnsupportedOperationException if the server is older than Minecraft 1.19.4
-	 * @throws ReflectiveOperationException
-	 * @see #setGlowingDisplay(Location, BlockData, Player, ChatColor, Brightness)
-	 */
-	public void setGlowingDisplay(@NotNull Block block, @NotNull Player receiver, @NotNull ChatColor color,
-			@Nullable Brightness brightness) throws ReflectiveOperationException {
-		setGlowingDisplay(block.getLocation(), null, receiver, color, brightness);
-	}
-
-	/**
-	 * Shows the glowing model of the block passed as a parameter.
+	 * Shows the glowing model of the block passed as a parameter and override its brightness.
 	 *
 	 * @param block block to make glow
 	 * @param receiver player which will see the block glowing
@@ -225,71 +207,11 @@ public class GlowingBlocks implements Listener {
 	 * @param brightness block and sky light levels, or {@code null} to estimate them
 	 * @throws UnsupportedOperationException if the server is older than Minecraft 1.19.4
 	 * @throws ReflectiveOperationException
-	 * @see #setGlowingDisplay(Location, BlockData, Player, ChatColor, Brightness)
+	 * @see #setGlowingDisplay(Location, BlockData, Player, Color, Brightness)
 	 */
 	public void setGlowingDisplay(@NotNull Block block, @NotNull Player receiver, @NotNull Color color,
 			@Nullable Brightness brightness) throws ReflectiveOperationException {
-		setGlowingDisplay(block.getLocation(), null, receiver, color, brightness);
-	}
-
-	/**
-	 * Shows the specified glowing block model at the given location.
-	 *
-	 * @param location location of the glowing model
-	 * @param blockData block state to display, or {@code null} to use the world block
-	 * @param receiver player which will see the block glowing
-	 * @param color color of the glowing effect
-	 * @throws UnsupportedOperationException if the server is older than Minecraft 1.19.4
-	 * @throws ReflectiveOperationException
-	 * @see #setGlowingDisplay(Location, BlockData, Player, ChatColor, Brightness)
-	 */
-	public void setGlowingDisplay(@NotNull Location location, @Nullable BlockData blockData, @NotNull Player receiver, @NotNull ChatColor color)
-			throws ReflectiveOperationException {
-		setGlowingDisplay(location, blockData, receiver, color, null);
-	}
-
-	/**
-	 * Shows the specified glowing block model at the given location.
-	 *
-	 * @param location location of the glowing model
-	 * @param blockData block state to display, or {@code null} to use the world block
-	 * @param receiver player which will see the block glowing
-	 * @param color RGB color of the glowing effect
-	 * @throws UnsupportedOperationException if the server is older than Minecraft 1.19.4
-	 * @throws ReflectiveOperationException
-	 * @see #setGlowingDisplay(Location, BlockData, Player, ChatColor, Brightness)
-	 */
-	public void setGlowingDisplay(@NotNull Location location, @Nullable BlockData blockData, @NotNull Player receiver, @NotNull Color color)
-			throws ReflectiveOperationException {
-		setGlowingDisplay(location, blockData, receiver, color, null);
-	}
-
-	/**
-	 * Shows the specified glowing block model at the given location.
-	 * <p>
-	 * The block data is copied and kept when the player reloads the chunk. Automatic brightness
-	 * averages block and sky light separately from exposed sides.
-	 *
-	 * @param location location of the glowing model
-	 * @param blockData block state to display, or {@code null} to use the world block
-	 * @param receiver player which will see the block glowing
-	 * @param color color of the glowing effect
-	 * @param brightness block and sky light levels, or {@code null} to estimate them
-	 * @throws UnsupportedOperationException if the server is older than Minecraft 1.19.4
-	 * @throws ReflectiveOperationException
-	 */
-	public void setGlowingDisplay(@NotNull Location location, @Nullable BlockData blockData, @NotNull Player receiver, @NotNull ChatColor color,
-			@Nullable Brightness brightness) throws ReflectiveOperationException {
-		Packets.ensureBlockDisplaysSupported();
-		ensureEnabled();
-
-		location = normalizeLocation(location);
-
-		if (!color.isColor())
-			throw new IllegalArgumentException("ChatColor must be a color format");
-
-		setGlowingBlock(new GlowingDisplayData(receiver, location, blockData,
-				color.asBungee().getColor().getRGB() & 0xFFFFFF, brightness));
+		setGlowingDisplay(block.getLocation(), block.getBlockData(), receiver, color, brightness);
 	}
 
 	/**
@@ -302,27 +224,19 @@ public class GlowingBlocks implements Listener {
 	 * @param brightness block and sky light levels, or {@code null} to estimate them
 	 * @throws UnsupportedOperationException if the server is older than Minecraft 1.19.4
 	 * @throws ReflectiveOperationException
-	 * @see #setGlowingDisplay(Location, BlockData, Player, ChatColor, Brightness)
 	 */
-	public void setGlowingDisplay(@NotNull Location location, @Nullable BlockData blockData, @NotNull Player receiver, @NotNull Color color,
-			@Nullable Brightness brightness) throws ReflectiveOperationException {
+	public void setGlowingDisplay(@NotNull Location location, @NotNull BlockData blockData, @NotNull Player receiver, @NotNull Color color,
+			@NotNull Brightness brightness) throws ReflectiveOperationException {
 		Packets.ensureBlockDisplaysSupported();
 		ensureEnabled();
 
 		location = normalizeLocation(location);
 
-		setGlowingBlock(new GlowingDisplayData(receiver, location, blockData,
+		setGlowingBlockInternal(new GlowingDisplayData(receiver, location, blockData,
 				color.asRGB(), brightness));
 	}
 
-	private GlowingBlockData createAutomaticData(Player player, Location location, ChatColor color) {
-		if (useDisplay(location))
-			return new GlowingDisplayData(player, location, null,
-					color.asBungee().getColor().getRGB() & 0xFFFFFF, null);
-		return new GlowingShulkerData(player, location, color);
-	}
-
-	private void setGlowingBlock(GlowingBlockData blockData) throws ReflectiveOperationException {
+	private void setGlowingBlockInternal(GlowingBlockData blockData) throws ReflectiveOperationException {
 		PlayerData playerData = glowing.computeIfAbsent(Objects.requireNonNull(blockData.player), PlayerData::new);
 		GlowingBlockData previous = playerData.datas.get(blockData.location);
 		if (previous != null) {
@@ -421,6 +335,7 @@ public class GlowingBlocks implements Listener {
 		return chunkDistanceSquared <= viewDistance * viewDistance;
 	}
 
+	// No @EventHandler on purpose, this method is registered manually in the #enable() method
 	public void onPlayerChunkLoad(PlayerChunkLoadEvent event) {
 		PlayerData playerData = glowing.get(event.getPlayer());
 		if (playerData == null)
@@ -504,19 +419,19 @@ public class GlowingBlocks implements Listener {
 		protected UUID entityUuid;
 
 		public GlowingBlockData(@NotNull Player player, @NotNull Location location) {
-			this.player = player;
-			this.location = location;
+			this.player = Objects.requireNonNull(player);
+			this.location = Objects.requireNonNull(location);
 		}
 
 		protected EntityIdentifierEID getEntityIdentifier() {
 			return new GlowingEntities.EntityIdentifierEID(entityId, location.getWorld());
 		}
 
-		public abstract void spawn() throws ReflectiveOperationException;
+		abstract void spawn() throws ReflectiveOperationException;
 
 		abstract void update() throws ReflectiveOperationException;
 
-		public void remove() throws ReflectiveOperationException {
+		void remove() throws ReflectiveOperationException {
 			if (entityUuid == null)
 				return;
 
@@ -525,8 +440,7 @@ public class GlowingBlocks implements Listener {
 			entityUuid = null;
 		}
 
-		void removeGlowing() throws ReflectiveOperationException {
-		}
+		abstract void removeGlowing() throws ReflectiveOperationException;
 
 		protected void init() throws ReflectiveOperationException {
 			if (entityUuid == null) {
@@ -579,16 +493,16 @@ public class GlowingBlocks implements Listener {
 
 	private class GlowingDisplayData extends GlowingBlockData {
 
-		private final @Nullable BlockData blockData;
+		private final @NotNull BlockData blockData;
 		private final int color;
-		private final @Nullable Brightness brightness;
+		private final @NotNull Brightness brightness;
 
-		GlowingDisplayData(Player player, Location location, @Nullable BlockData blockData, int color,
-				@Nullable Brightness brightness) {
+		GlowingDisplayData(Player player, Location location, @NotNull BlockData blockData, int color,
+				@NotNull Brightness brightness) {
 			super(player, location);
-			this.blockData = blockData == null ? null : blockData.clone();
-			this.color = color;
-			this.brightness = brightness;
+			this.blockData = Objects.requireNonNull(blockData.clone());
+			this.color = Objects.requireNonNull(color);
+			this.brightness = Objects.requireNonNull(brightness);
 		}
 
 		@Override
@@ -606,12 +520,14 @@ public class GlowingBlocks implements Listener {
 		}
 
 		private void sendMetadata() throws ReflectiveOperationException {
-			Block block = location.getBlock();
-			BlockData state = blockData == null ? block.getBlockData() : blockData;
-			Brightness light = brightness == null ? estimateBrightness(block) : brightness;
+			Packets.setBlockDisplayMetadata(player, getEntityIdentifier(), blockData, color,
+					brightness.getBlockLight(), brightness.getSkyLight());
+		}
 
-			Packets.setBlockDisplayMetadata(player, getEntityIdentifier(), state, color,
-					light.getBlockLight(), light.getSkyLight());
+		@Override
+		void removeGlowing() throws ReflectiveOperationException {
+			// We actually don't use the GlowingEntities#setGlowing methods
+			// since Display Entities have glowing override
 		}
 
 	}
