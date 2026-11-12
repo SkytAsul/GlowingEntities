@@ -361,6 +361,7 @@ net.minecraft.world.scores.PlayerTeam -> net.minecraft.world.scores.ScoreboardTe
 net.minecraft.world.entity.EntityType -> net.minecraft.world.entity.EntityTypes:
     MARKER -> am
     SHULKER -> aG
+    BLOCK_DISPLAY -> j
 net.minecraft.network.Connection -> net.minecraft.network.NetworkManager:
     channel -> m
 net.minecraft.network.protocol.game.ClientboundSetPlayerTeamPacket -> net.minecraft.network.protocol.game.PacketPlayOutScoreboardTeam:
@@ -371,6 +372,11 @@ net.minecraft.network.syncher.SynchedEntityData$DataValue -> net.minecraft.netwo
     id() -> a
     serializer() -> b
     value() -> c
+net.minecraft.world.entity.Display$BlockDisplay -> net.minecraft.world.entity.Display$BlockDisplay:
+    DATA_BLOCK_STATE_ID -> p
+net.minecraft.world.entity.Display -> net.minecraft.world.entity.Display:
+    DATA_BRIGHTNESS_OVERRIDE_ID -> aE
+    DATA_GLOW_COLOR_OVERRIDE_ID -> aK
 net.minecraft.network.protocol.BundlePacket -> net.minecraft.network.protocol.BundlePacket:
     subPackets() -> a
 net.minecraft.network.syncher.SynchedEntityData -> net.minecraft.network.syncher.DataWatcher:
@@ -406,6 +412,7 @@ net.minecraft.world.scores.PlayerTeam -> net.minecraft.world.scores.ScoreboardTe
 net.minecraft.world.entity.EntityType -> net.minecraft.world.entity.EntityTypes:
     MARKER -> am
     SHULKER -> aG
+    BLOCK_DISPLAY -> j
 net.minecraft.network.Connection -> net.minecraft.network.NetworkManager:
     channel -> m
 net.minecraft.network.protocol.game.ClientboundSetPlayerTeamPacket -> net.minecraft.network.protocol.game.PacketPlayOutScoreboardTeam:
@@ -416,6 +423,11 @@ net.minecraft.network.syncher.SynchedEntityData$DataValue -> net.minecraft.netwo
     id() -> a
     serializer() -> b
     value() -> c
+net.minecraft.world.entity.Display$BlockDisplay -> net.minecraft.world.entity.Display$BlockDisplay:
+    DATA_BLOCK_STATE_ID -> p
+net.minecraft.world.entity.Display -> net.minecraft.world.entity.Display:
+    DATA_BRIGHTNESS_OVERRIDE_ID -> aE
+    DATA_GLOW_COLOR_OVERRIDE_ID -> aK
 net.minecraft.network.protocol.BundlePacket -> net.minecraft.network.protocol.BundlePacket:
     subPackets() -> a
 net.minecraft.network.syncher.SynchedEntityData -> net.minecraft.network.syncher.DataWatcher:
@@ -451,6 +463,7 @@ net.minecraft.world.scores.PlayerTeam -> net.minecraft.world.scores.ScoreboardTe
 net.minecraft.world.entity.EntityType -> net.minecraft.world.entity.EntityTypes:
     MARKER -> am
     SHULKER -> aG
+    BLOCK_DISPLAY -> j
 net.minecraft.network.Connection -> net.minecraft.network.NetworkManager:
     channel -> n
 net.minecraft.network.protocol.game.ClientboundSetPlayerTeamPacket -> net.minecraft.network.protocol.game.PacketPlayOutScoreboardTeam:
@@ -464,6 +477,11 @@ net.minecraft.network.syncher.SynchedEntityData$DataValue -> net.minecraft.netwo
     id() -> a
     serializer() -> b
     value() -> c
+net.minecraft.world.entity.Display$BlockDisplay -> net.minecraft.world.entity.Display$BlockDisplay:
+    DATA_BLOCK_STATE_ID -> q
+net.minecraft.world.entity.Display -> net.minecraft.world.entity.Display:
+    DATA_BRIGHTNESS_OVERRIDE_ID -> aG
+    DATA_GLOW_COLOR_OVERRIDE_ID -> aM
 net.minecraft.network.protocol.BundlePacket -> net.minecraft.network.protocol.BundlePacket:
     subPackets() -> a
 net.minecraft.network.syncher.SynchedEntityData -> net.minecraft.network.syncher.DataWatcher:
@@ -496,6 +514,7 @@ net.minecraft.world.scores.PlayerTeam -> net.minecraft.world.scores.ScoreboardTe
 net.minecraft.world.entity.EntityType -> net.minecraft.world.entity.EntityTypes:
     MARKER -> an
     SHULKER -> aH
+    BLOCK_DISPLAY -> j
 net.minecraft.network.Connection -> net.minecraft.network.NetworkManager:
     channel -> n
 net.minecraft.network.protocol.game.ClientboundSetPlayerTeamPacket -> net.minecraft.network.protocol.game.PacketPlayOutScoreboardTeam:
@@ -509,6 +528,11 @@ net.minecraft.network.syncher.SynchedEntityData$DataValue -> net.minecraft.netwo
     id() -> a
     serializer() -> b
     value() -> c
+net.minecraft.world.entity.Display$BlockDisplay -> net.minecraft.world.entity.Display$BlockDisplay:
+    DATA_BLOCK_STATE_ID -> q
+net.minecraft.world.entity.Display -> net.minecraft.world.entity.Display:
+    DATA_BRIGHTNESS_OVERRIDE_ID -> aG
+    DATA_GLOW_COLOR_OVERRIDE_ID -> aM
 net.minecraft.network.protocol.BundlePacket -> net.minecraft.network.protocol.BundlePacket:
     subPackets() -> a
 net.minecraft.network.syncher.SynchedEntityData -> net.minecraft.network.syncher.DataWatcher:
@@ -537,6 +561,7 @@ net.minecraft.network.protocol.game.ClientboundSetPlayerTeamPacket$Parameters ->
 net.minecraft.world.entity.EntityType -> net.minecraft.world.entity.EntityTypes:
     MARKER -> aq
     SHULKER -> aK
+    BLOCK_DISPLAY -> j
 net.minecraft.network.Connection -> net.minecraft.network.NetworkManager:
     channel -> n
 net.minecraft.network.protocol.game.ClientboundSetPlayerTeamPacket -> net.minecraft.network.protocol.game.PacketPlayOutScoreboardTeam:
@@ -548,6 +573,11 @@ net.minecraft.network.syncher.SynchedEntityData$DataValue -> net.minecraft.netwo
     id() -> a
     serializer() -> b
     value() -> c
+net.minecraft.world.entity.Display$BlockDisplay -> net.minecraft.world.entity.Display$BlockDisplay:
+    DATA_BLOCK_STATE_ID -> q
+net.minecraft.world.entity.Display -> net.minecraft.world.entity.Display:
+    DATA_BRIGHTNESS_OVERRIDE_ID -> aH
+    DATA_GLOW_COLOR_OVERRIDE_ID -> aN
 net.minecraft.server.level.ServerPlayer -> net.minecraft.server.level.EntityPlayer:
     connection -> c
 net.minecraft.world.scores.Team$CollisionRule -> net.minecraft.world.scores.ScoreboardTeamBase$EnumTeamPush:
@@ -587,6 +617,7 @@ net.minecraft.network.protocol.game.ClientboundSetPlayerTeamPacket$Parameters ->
 net.minecraft.world.entity.EntityType -> net.minecraft.world.entity.EntityTypes:
     MARKER -> aq
     SHULKER -> aK
+    BLOCK_DISPLAY -> j
 net.minecraft.network.Connection -> net.minecraft.network.NetworkManager:
     channel -> n
 net.minecraft.network.protocol.game.ClientboundSetPlayerTeamPacket -> net.minecraft.network.protocol.game.PacketPlayOutScoreboardTeam:
@@ -598,6 +629,11 @@ net.minecraft.network.syncher.SynchedEntityData$DataValue -> net.minecraft.netwo
     id() -> a
     serializer() -> b
     value() -> c
+net.minecraft.world.entity.Display$BlockDisplay -> net.minecraft.world.entity.Display$BlockDisplay:
+    DATA_BLOCK_STATE_ID -> q
+net.minecraft.world.entity.Display -> net.minecraft.world.entity.Display:
+    DATA_BRIGHTNESS_OVERRIDE_ID -> aF
+    DATA_GLOW_COLOR_OVERRIDE_ID -> aL
 net.minecraft.server.level.ServerPlayer -> net.minecraft.server.level.EntityPlayer:
     connection -> c
 net.minecraft.world.scores.Team$CollisionRule -> net.minecraft.world.scores.ScoreboardTeamBase$EnumTeamPush:
@@ -637,6 +673,7 @@ net.minecraft.network.protocol.game.ClientboundSetPlayerTeamPacket$Parameters ->
 net.minecraft.world.entity.EntityType -> net.minecraft.world.entity.EntityTypes:
     MARKER -> aq
     SHULKER -> aK
+    BLOCK_DISPLAY -> j
 net.minecraft.network.Connection -> net.minecraft.network.NetworkManager:
     channel -> n
 net.minecraft.network.protocol.game.ClientboundSetPlayerTeamPacket -> net.minecraft.network.protocol.game.PacketPlayOutScoreboardTeam:
@@ -648,6 +685,11 @@ net.minecraft.network.syncher.SynchedEntityData$DataValue -> net.minecraft.netwo
     id() -> a
     serializer() -> b
     value() -> c
+net.minecraft.world.entity.Display$BlockDisplay -> net.minecraft.world.entity.Display$BlockDisplay:
+    DATA_BLOCK_STATE_ID -> q
+net.minecraft.world.entity.Display -> net.minecraft.world.entity.Display:
+    DATA_BRIGHTNESS_OVERRIDE_ID -> aF
+    DATA_GLOW_COLOR_OVERRIDE_ID -> aL
 net.minecraft.server.level.ServerPlayer -> net.minecraft.server.level.EntityPlayer:
     connection -> c
 net.minecraft.world.scores.Team$CollisionRule -> net.minecraft.world.scores.ScoreboardTeamBase$EnumTeamPush:
@@ -687,6 +729,7 @@ net.minecraft.network.protocol.game.ClientboundSetPlayerTeamPacket$Parameters ->
 net.minecraft.world.entity.EntityType -> net.minecraft.world.entity.EntityTypes:
     MARKER -> aD
     SHULKER -> bc
+    BLOCK_DISPLAY -> p
 net.minecraft.network.Connection -> net.minecraft.network.NetworkManager:
     channel -> n
 net.minecraft.network.protocol.game.ClientboundSetPlayerTeamPacket -> net.minecraft.network.protocol.game.PacketPlayOutScoreboardTeam:
@@ -698,6 +741,11 @@ net.minecraft.network.syncher.SynchedEntityData$DataValue -> net.minecraft.netwo
     id() -> a
     serializer() -> b
     value() -> c
+net.minecraft.world.entity.Display$BlockDisplay -> net.minecraft.world.entity.Display$BlockDisplay:
+    DATA_BLOCK_STATE_ID -> p
+net.minecraft.world.entity.Display -> net.minecraft.world.entity.Display:
+    DATA_BRIGHTNESS_OVERRIDE_ID -> aA
+    DATA_GLOW_COLOR_OVERRIDE_ID -> aG
 net.minecraft.server.level.ServerPlayer -> net.minecraft.server.level.EntityPlayer:
     connection -> f
 net.minecraft.world.scores.Team$CollisionRule -> net.minecraft.world.scores.ScoreboardTeamBase$EnumTeamPush:
@@ -737,6 +785,7 @@ net.minecraft.network.protocol.game.ClientboundSetPlayerTeamPacket$Parameters ->
 net.minecraft.world.entity.EntityType -> net.minecraft.world.entity.EntityTypes:
     MARKER -> aC
     SHULKER -> bb
+    BLOCK_DISPLAY -> p
 net.minecraft.network.Connection -> net.minecraft.network.NetworkManager:
     channel -> n
 net.minecraft.network.protocol.game.ClientboundSetPlayerTeamPacket -> net.minecraft.network.protocol.game.PacketPlayOutScoreboardTeam:
@@ -748,6 +797,11 @@ net.minecraft.network.syncher.SynchedEntityData$DataValue -> net.minecraft.netwo
     id() -> a
     serializer() -> b
     value() -> c
+net.minecraft.world.entity.Display$BlockDisplay -> net.minecraft.world.entity.Display$BlockDisplay:
+    DATA_BLOCK_STATE_ID -> p
+net.minecraft.world.entity.Display -> net.minecraft.world.entity.Display:
+    DATA_BRIGHTNESS_OVERRIDE_ID -> aA
+    DATA_GLOW_COLOR_OVERRIDE_ID -> aG
 net.minecraft.server.level.ServerPlayer -> net.minecraft.server.level.EntityPlayer:
     connection -> f
 net.minecraft.world.scores.Team$CollisionRule -> net.minecraft.world.scores.ScoreboardTeamBase$EnumTeamPush:
@@ -787,6 +841,7 @@ net.minecraft.network.protocol.game.ClientboundSetPlayerTeamPacket$Parameters ->
 net.minecraft.world.entity.EntityType -> net.minecraft.world.entity.EntityTypes:
     MARKER -> aD
     SHULKER -> bd
+    BLOCK_DISPLAY -> q
 net.minecraft.network.Connection -> net.minecraft.network.NetworkManager:
     channel -> n
 net.minecraft.network.protocol.game.ClientboundSetPlayerTeamPacket -> net.minecraft.network.protocol.game.PacketPlayOutScoreboardTeam:
@@ -798,6 +853,11 @@ net.minecraft.network.syncher.SynchedEntityData$DataValue -> net.minecraft.netwo
     id() -> a
     serializer() -> b
     value() -> c
+net.minecraft.world.entity.Display$BlockDisplay -> net.minecraft.world.entity.Display$BlockDisplay:
+    DATA_BLOCK_STATE_ID -> p
+net.minecraft.world.entity.Display -> net.minecraft.world.entity.Display:
+    DATA_BRIGHTNESS_OVERRIDE_ID -> aA
+    DATA_GLOW_COLOR_OVERRIDE_ID -> aG
 net.minecraft.server.level.ServerPlayer -> net.minecraft.server.level.EntityPlayer:
     connection -> f
 net.minecraft.world.scores.Team$CollisionRule -> net.minecraft.world.scores.ScoreboardTeamBase$EnumTeamPush:
@@ -837,6 +897,7 @@ net.minecraft.network.protocol.game.ClientboundSetPlayerTeamPacket$Parameters ->
 net.minecraft.world.entity.EntityType -> net.minecraft.world.entity.EntityTypes:
     MARKER -> aE
     SHULKER -> be
+    BLOCK_DISPLAY -> q
 net.minecraft.network.Connection -> net.minecraft.network.NetworkManager:
     channel -> n
 net.minecraft.network.protocol.game.ClientboundSetPlayerTeamPacket -> net.minecraft.network.protocol.game.PacketPlayOutScoreboardTeam:
@@ -848,6 +909,11 @@ net.minecraft.network.syncher.SynchedEntityData$DataValue -> net.minecraft.netwo
     id() -> a
     serializer() -> b
     value() -> c
+net.minecraft.world.entity.Display$BlockDisplay -> net.minecraft.world.entity.Display$BlockDisplay:
+    DATA_BLOCK_STATE_ID -> p
+net.minecraft.world.entity.Display -> net.minecraft.world.entity.Display:
+    DATA_BRIGHTNESS_OVERRIDE_ID -> aO
+    DATA_GLOW_COLOR_OVERRIDE_ID -> aU
 net.minecraft.server.level.ServerPlayer -> net.minecraft.server.level.EntityPlayer:
     connection -> g
 net.minecraft.world.scores.Team$CollisionRule -> net.minecraft.world.scores.ScoreboardTeamBase$EnumTeamPush:
@@ -887,6 +953,7 @@ net.minecraft.network.protocol.game.ClientboundSetPlayerTeamPacket$Parameters ->
 net.minecraft.world.entity.EntityType -> net.minecraft.world.entity.EntityTypes:
     MARKER -> aE
     SHULKER -> be
+    BLOCK_DISPLAY -> q
 net.minecraft.network.Connection -> net.minecraft.network.NetworkManager:
     channel -> n
 net.minecraft.network.protocol.game.ClientboundSetPlayerTeamPacket -> net.minecraft.network.protocol.game.PacketPlayOutScoreboardTeam:
@@ -898,6 +965,11 @@ net.minecraft.network.syncher.SynchedEntityData$DataValue -> net.minecraft.netwo
     id() -> a
     serializer() -> b
     value() -> c
+net.minecraft.world.entity.Display$BlockDisplay -> net.minecraft.world.entity.Display$BlockDisplay:
+    DATA_BLOCK_STATE_ID -> p
+net.minecraft.world.entity.Display -> net.minecraft.world.entity.Display:
+    DATA_BRIGHTNESS_OVERRIDE_ID -> aO
+    DATA_GLOW_COLOR_OVERRIDE_ID -> aU
 net.minecraft.server.level.ServerPlayer -> net.minecraft.server.level.EntityPlayer:
     connection -> g
 net.minecraft.world.scores.Team$CollisionRule -> net.minecraft.world.scores.ScoreboardTeamBase$EnumTeamPush:
@@ -937,6 +1009,7 @@ net.minecraft.network.protocol.game.ClientboundSetPlayerTeamPacket$Parameters ->
 net.minecraft.world.entity.EntityType -> net.minecraft.world.entity.EntityTypes:
     MARKER -> aE
     SHULKER -> be
+    BLOCK_DISPLAY -> q
 net.minecraft.network.Connection -> net.minecraft.network.NetworkManager:
     channel -> n
 net.minecraft.network.protocol.game.ClientboundSetPlayerTeamPacket -> net.minecraft.network.protocol.game.PacketPlayOutScoreboardTeam:
@@ -948,6 +1021,11 @@ net.minecraft.network.syncher.SynchedEntityData$DataValue -> net.minecraft.netwo
     id() -> a
     serializer() -> b
     value() -> c
+net.minecraft.world.entity.Display$BlockDisplay -> net.minecraft.world.entity.Display$BlockDisplay:
+    DATA_BLOCK_STATE_ID -> p
+net.minecraft.world.entity.Display -> net.minecraft.world.entity.Display:
+    DATA_BRIGHTNESS_OVERRIDE_ID -> aO
+    DATA_GLOW_COLOR_OVERRIDE_ID -> aU
 net.minecraft.server.level.ServerPlayer -> net.minecraft.server.level.EntityPlayer:
     connection -> g
 net.minecraft.world.scores.Team$CollisionRule -> net.minecraft.world.scores.ScoreboardTeamBase$EnumTeamPush:
@@ -987,6 +1065,7 @@ net.minecraft.network.protocol.game.ClientboundSetPlayerTeamPacket$Parameters ->
 net.minecraft.world.entity.EntityType -> net.minecraft.world.entity.EntityTypes:
     MARKER -> aH
     SHULKER -> bh
+    BLOCK_DISPLAY -> r
 net.minecraft.network.Connection -> net.minecraft.network.NetworkManager:
     channel -> n
 net.minecraft.network.protocol.game.ClientboundSetPlayerTeamPacket -> net.minecraft.network.protocol.game.PacketPlayOutScoreboardTeam:
@@ -998,6 +1077,11 @@ net.minecraft.network.syncher.SynchedEntityData$DataValue -> net.minecraft.netwo
     id() -> a
     serializer() -> b
     value() -> c
+net.minecraft.world.entity.Display$BlockDisplay -> net.minecraft.world.entity.Display$BlockDisplay:
+    DATA_BLOCK_STATE_ID -> p
+net.minecraft.world.entity.Display -> net.minecraft.world.entity.Display:
+    DATA_BRIGHTNESS_OVERRIDE_ID -> aP
+    DATA_GLOW_COLOR_OVERRIDE_ID -> aV
 net.minecraft.server.level.ServerPlayer -> net.minecraft.server.level.EntityPlayer:
     connection -> g
 net.minecraft.world.scores.Team$CollisionRule -> net.minecraft.world.scores.ScoreboardTeamBase$EnumTeamPush:
@@ -1037,6 +1121,7 @@ net.minecraft.network.protocol.game.ClientboundSetPlayerTeamPacket$Parameters ->
 net.minecraft.world.entity.EntityType -> net.minecraft.world.entity.EntityTypes:
     MARKER -> aH
     SHULKER -> bh
+    BLOCK_DISPLAY -> r
 net.minecraft.network.Connection -> net.minecraft.network.NetworkManager:
     channel -> n
 net.minecraft.network.protocol.game.ClientboundSetPlayerTeamPacket -> net.minecraft.network.protocol.game.PacketPlayOutScoreboardTeam:
@@ -1048,6 +1133,11 @@ net.minecraft.network.syncher.SynchedEntityData$DataValue -> net.minecraft.netwo
     id() -> a
     serializer() -> b
     value() -> c
+net.minecraft.world.entity.Display$BlockDisplay -> net.minecraft.world.entity.Display$BlockDisplay:
+    DATA_BLOCK_STATE_ID -> p
+net.minecraft.world.entity.Display -> net.minecraft.world.entity.Display:
+    DATA_BRIGHTNESS_OVERRIDE_ID -> aP
+    DATA_GLOW_COLOR_OVERRIDE_ID -> aV
 net.minecraft.server.level.ServerPlayer -> net.minecraft.server.level.EntityPlayer:
     connection -> g
 net.minecraft.world.scores.Team$CollisionRule -> net.minecraft.world.scores.ScoreboardTeamBase$EnumTeamPush:
@@ -1087,6 +1177,7 @@ net.minecraft.network.protocol.game.ClientboundSetPlayerTeamPacket$Parameters ->
 net.minecraft.world.entity.EntityType -> net.minecraft.world.entity.EntityTypes:
     MARKER -> aI
     SHULKER -> bk
+    BLOCK_DISPLAY -> r
 net.minecraft.network.Connection -> net.minecraft.network.NetworkManager:
     channel -> k
 net.minecraft.network.protocol.game.ClientboundSetPlayerTeamPacket -> net.minecraft.network.protocol.game.PacketPlayOutScoreboardTeam:
@@ -1098,6 +1189,11 @@ net.minecraft.network.syncher.SynchedEntityData$DataValue -> net.minecraft.netwo
     id() -> a
     serializer() -> b
     value() -> c
+net.minecraft.world.entity.Display$BlockDisplay -> net.minecraft.world.entity.Display$BlockDisplay:
+    DATA_BLOCK_STATE_ID -> p
+net.minecraft.world.entity.Display -> net.minecraft.world.entity.Display:
+    DATA_BRIGHTNESS_OVERRIDE_ID -> aP
+    DATA_GLOW_COLOR_OVERRIDE_ID -> aV
 net.minecraft.server.level.ServerPlayer -> net.minecraft.server.level.EntityPlayer:
     connection -> g
 net.minecraft.world.scores.Team$CollisionRule -> net.minecraft.world.scores.ScoreboardTeamBase$EnumTeamPush:
