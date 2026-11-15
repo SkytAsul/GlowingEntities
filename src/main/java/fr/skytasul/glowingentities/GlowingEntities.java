@@ -418,7 +418,6 @@ public class GlowingEntities implements Listener {
 				}
 
 				var serverVersion = Version.parse(minecraftVersion);
-				blockDisplaysSupported = !serverVersion.isBefore(1, 19, 4);
 				logger.info("Found server version " + serverVersion);
 
 				cpack = Bukkit.getServer().getClass().getPackage().getName() + ".";
@@ -475,19 +474,6 @@ public class GlowingEntities implements Listener {
 			ensureInitialized();
 			if (!supportsBlockDisplays())
 				throw new UnsupportedOperationException("Block displays require Minecraft 1.19.4 or newer.");
-		}
-
-		protected static void loadBlockDisplayReflection(@NotNull ReflectionAccessor reflection, @NotNull Version version)
-				throws ReflectiveOperationException {
-			watcherObjectBlockState = getNMSClass(reflection, "world.entity", "Display$BlockDisplay")
-					.getField("DATA_BLOCK_STATE_ID").get(null);
-			var displayClass = getNMSClass(reflection, "world.entity", "Display");
-			watcherObjectBrightness = displayClass.getField("DATA_BRIGHTNESS_OVERRIDE_ID").get(null);
-			watcherObjectGlowColor = displayClass.getField("DATA_GLOW_COLOR_OVERRIDE_ID").get(null);
-			getBlockState = cpack == null ? null
-					: getCraftClass("block.data", "CraftBlockData").getDeclaredMethod("getState");
-			blockDisplayEntityType = getEntityType(reflection, version,
-					getNMSClass(reflection, "world.entity", "EntityType"), "BLOCK_DISPLAY", "block_display");
 		}
 
 		protected static void loadReflection(@NotNull ReflectionAccessor reflection, @NotNull Version version)
@@ -633,8 +619,22 @@ public class GlowingEntities implements Listener {
 					: getNMSClass(reflection, "network.protocol.game", "ClientboundRemoveEntitiesPacket")
 							.getConstructorInstance(int[].class);
 
-			if (supportsBlockDisplays())
+			blockDisplaysSupported = version.isAfter(1, 19, 4);
+			if (blockDisplaysSupported)
 				loadBlockDisplayReflection(reflection, version);
+		}
+
+		protected static void loadBlockDisplayReflection(@NotNull ReflectionAccessor reflection, @NotNull Version version)
+				throws ReflectiveOperationException {
+			watcherObjectBlockState = getNMSClass(reflection, "world.entity", "Display$BlockDisplay")
+					.getField("DATA_BLOCK_STATE_ID").get(null);
+			var displayClass = getNMSClass(reflection, "world.entity", "Display");
+			watcherObjectBrightness = displayClass.getField("DATA_BRIGHTNESS_OVERRIDE_ID").get(null);
+			watcherObjectGlowColor = displayClass.getField("DATA_GLOW_COLOR_OVERRIDE_ID").get(null);
+			getBlockState = cpack == null ? null
+					: getCraftClass("block.data", "CraftBlockData").getDeclaredMethod("getState");
+			blockDisplayEntityType = getEntityType(reflection, version,
+					getNMSClass(reflection, "world.entity", "EntityType"), "BLOCK_DISPLAY", "block_display");
 		}
 
 		private static Object getEntityType(
